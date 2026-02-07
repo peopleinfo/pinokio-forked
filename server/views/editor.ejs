@@ -1,0 +1,1075 @@
+<html class='columns'>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<script src="/hotkeys.min.js"></script>
+<script src="/ace/ace.js"></script>
+<script src="/noty.js"></script>
+<script src="/notyq.js"></script>
+<script src="/xterm.js"></script>
+<script src="/xterm-inline-bridge.js"></script>
+<script src="/xterm-addon-fit.js"></script>
+<script src="/xterm-addon-web-links.js"></script>
+<script src="/xterm-theme.js"></script>
+<script src="/xterm-addon-search.js"></script>
+<script src="/xterm-addon-search-bar.js"></script>
+<script src="/sweetalert2.js"></script>
+<script src="/Socket.js"></script>
+<script src="/resizeSync.js"></script>
+<script src="/terminal-settings.js"></script>
+<script src="/pinokio-touch.js"></script>
+<script src="/common.js"></script>
+<script src="/he.js"></script>
+<script src="/opener.js"></script>
+<script src="/nav.js"></script>
+<script src="/autoexpand.js"></script>
+<script src="/modalinput.js"></script>
+<script src="/htmlmodal.js"></script>
+<script src="/simplemodal.js"></script>
+<script src="/waitmodal.js"></script>
+<script src="/notifyinput.js"></script>
+<script src="/report.js"></script>
+<script src="/mark.min.js"></script>
+<link href="/xterm.min.css" rel="stylesheet" />
+<link href="/css/fontawesome.min.css" rel="stylesheet">
+<link href="/css/solid.min.css" rel="stylesheet">
+<link href="/css/regular.min.css" rel="stylesheet">
+<link href="/css/brands.min.css" rel="stylesheet">
+<link href="/style.css" rel="stylesheet"/>
+<link href="/noty.css" rel="stylesheet"/>
+<link href="/urldropdown.css" rel="stylesheet"/>
+<% if (agent === "electron") { %>
+  <link href="/electron.css" rel="stylesheet"/>
+<% } %>
+<style>
+@font-face {
+  font-family: 'RobotoMono';
+  src: url('/RobotoMono-Regular.ttf') format(truetype);
+  font-weight: normal;
+  font-style: normal;
+}
+body.frozen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.terminal-container {
+  flex-grow: none !important;
+}
+.xterm {
+  height: 100%;
+}
+.containers main {
+  height: 100%;
+  width: 100%;
+}
+.containers.running main {
+  height: 50%;
+  width: 100%;
+}
+.containers {
+  display: block;
+}
+.containers .terminal-container {
+  height: 50%;
+  width: 100%;
+}
+#table > table {
+  border-left: 2px solid black;
+  padding-left: 5px;
+  margin: 10px 0;
+}
+.highlight {
+  background: yellow;
+  width: 100px;
+}
+th {
+  background: rgba(0,0,0,0.1);
+  padding: 10px;
+  font-size: 12px;
+}
+td {
+  font-size: 12px;
+  padding: 10px;
+}
+td.val {
+  background: rgba(0,0,0,0.06);
+}
+td.key {
+  background: rgba(0,0,0,0.1);
+}
+.button {
+  cursor: pointer; 
+  background: rgba(0,0,0,0.8);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+}
+.button:hover {
+  
+}
+#editor {
+  font-family: "RobotoMono";
+}
+/*
+#editor {
+  background: var(--dark-bg);
+}
+*/
+header {
+  padding: 10px;
+}
+header .runner {
+  padding: 10px 0 0;
+}
+#del-bin {
+  color: rgba(127, 91, 243, 0.9);
+  cursor: pointer;
+  font-weight: bold;
+  padding: 0 5px;
+  text-decoration: underline;
+}
+body.frozen {
+  overflow: auto !important;
+}
+@media only screen and (max-width: 800px) {
+  header h1 {
+    height: unset;
+  }
+  .appcanvas, main {
+    padding-top: unset;
+  }
+}
+</style>
+<script>
+let shell_id
+document.addEventListener("DOMContentLoaded", async () => {
+  <% if (error) { %>
+    document.querySelector(".requirements .content").innerHTML = '<div class="loading"><i class="fa-solid fa-circle-exclamation"></i> <%=error%></div>'
+  <% } %>
+  <% if (!install_required) { %>
+  /*
+    document.querySelector("footer").addEventListener("click", (e) => {
+      if (e.target.classList.contains("toggle-expand") || e.target.closest(".toggle-expand")) {
+        let el = document.querySelector("footer .toggle-expand i")
+        if (el.classList.contains("fa-circle-chevron-up")) {
+          el.className = "fa-solid fa-circle-chevron-down"
+        } else if (el.classList.contains("fa-circle-chevron-down")) {
+          el.className = "fa-solid fa-circle-chevron-up"
+        }
+        document.querySelector("footer").classList.toggle("expanded")
+      }
+    })
+    */
+  <% } %>
+  <% if (requirements_pending) { %>
+    await new Promise((resolve, reject) => {
+      let interval = setInterval(() => {
+        fetch("/pinokio/requirements_ready").then((res) => {
+          return res.json()
+        }).then((res) => {
+          if (res.error) {
+            alert(res.error)
+            clearInterval(interval)
+          } else if (!res.requirements_pending) {
+            clearInterval(interval)
+            resolve()
+          }
+        })
+      }, 500)
+    })
+    location.href = location.href
+  <% } %>
+  <% if (!install_required) { %>
+    let editor = ace.edit("editor");
+    //editor.setTheme("ace/theme/github_light_default");
+    //editor.setTheme("ace/theme/ambiance");
+    <% if (theme === "dark") { %>
+      editor.setTheme("ace/theme/idle_fingers");
+    <% } else { %>
+      editor.setTheme("ace/theme/tomorrow");
+    <% } %>
+    //editor.setTheme("ace/theme/nord_dark");
+    //editor.setTheme("ace/theme/textmate");
+    editor.setOptions({
+      wrap: true,
+//      maxLines: Infinity, // set to a large number
+      minLines: 1 // set to a small number
+    });
+    console.log("location.pathname", location.pathname)
+    <% if (mod) { %>
+      <% if (js) { %>
+        editor.session.setMode("ace/mode/javascript");
+      <% } else if (json) { %>
+        editor.session.setMode("ace/mode/json");
+      <% } %>
+    <% } %>
+    if (location.pathname.endsWith("ENVIRONMENT")) {
+      editor.session.setMode("ace/mode/python");
+    }
+    //editor.session.setMode("ace/mode/javascript");
+    //editor.setValue(file)
+    editor.clearSelection()
+    if (location.hash && location.hash.length > 1) {
+      let parsedHash = location.hash.slice(1)
+      let line_re = /L([0-9]+)/
+      let line_match = line_re.exec(parsedHash)
+      if (line_match && line_match.length > 0) {
+        let line = parseInt(line_match[1])
+        editor.gotoLine(line)
+        editor.selection.selectLine()
+        editor.gotoLine(line)
+        editor.focus()
+      }
+  //    let range_re = /L[0-9]+-L[0-9]+/
+
+  //    let range_match = range_re.exec(parsedHash)
+  //    if (range_match && range_match.length > 0) {
+  //      
+  //    }
+    }
+    let dirty
+    let str;
+    let original = editor.getValue()
+    editor.getSession().on("change", () => {
+      let v = editor.getValue()
+      if (original === v) {
+        dirty = false
+        document.querySelector("#save").classList.add("disabled")
+      } else {
+        dirty = true
+        document.querySelector("#save").classList.remove("disabled")
+      }
+      str = v
+    });
+  <% } %>
+  const n = new N()
+  class RPC {
+    constructor() {
+      this.socket = new Socket()
+      this.resizeSync = window.PinokioResizeSync.create({
+        socket: this.socket,
+        getShellId: () => shell_id
+      })
+    }
+    finished() {
+    /*
+      n.Noty({
+        text: `[Success] All steps complete`,
+      })
+      */
+      document.querySelector(".run .play").classList.remove("hidden")
+      document.querySelector(".run .stop").classList.add("hidden")
+      document.querySelector(".run .starting").classList.add("hidden")
+    }
+    stop() {
+      let cwd = "<%-JSON.stringify(execUrl).slice(1, -1)%>"
+      this.socket.run({
+        method: "kernel.api.stop",
+        params: {
+          //uri: "<%=execUrl%>",
+          uri: cwd,
+          //uri: "~" + location.pathname
+        }
+      }, (stream) => {
+      })
+    }
+    save() {
+      return new Promise((resolve, reject) => {
+        let cwd = "<%-JSON.stringify(execUrl).slice(1, -1)%>"
+        //let cwd = "<%=execUrl%>"
+        //let cwd = "~" + location.pathname
+        this.socket.close()
+        this.resizeSync.reset()
+        this.socket.run({
+          method: "fs.write",
+          params: {
+            path: cwd,
+            text: str,
+          }
+        }, (packet) => {
+          if (packet.type === "result" && packet.id === "fs.write") {
+            dirty = false
+            document.querySelector("#save").classList.add("disabled")
+            resolve()
+          }
+        })
+      })
+    }
+    async start(mode) {
+//        await this.save()
+        this.socket.close()
+//        document.querySelector(".terminal-container").classList.add("hidden")
+        let query = Object.fromEntries(new URLSearchParams(location.search))
+//        document.querySelector(".containers").classList.add("running")
+
+
+        this.socket.run({
+          //uri: location.pathname.slice(1).replace("api/", ""),
+          //uri: "~" + location.pathname,
+          uri: "<%-JSON.stringify(execUrl).slice(1, -1)%>",
+          //uri: "<%=execUrl%>",
+          //uri: "~" + location.pathname,
+          mode,
+          input: query,
+          client: {
+            cols: this.term.cols,
+            rows: this.term.rows,
+          }
+        }, async (packet) => {
+          console.log("packet", packet)
+          if (packet.type === 'start') {
+//            refreshParent(packet)
+            reloadMemory()
+            if (packet.data && packet.data.description) {
+              if ('current' in packet.data) {
+                document.querySelector("footer").innerHTML = `<b>
+                  <i class="fa-solid fa-circle-notch fa-spin"></i>(${packet.data.current+1}/${packet.data.total}) ${packet.data.title ? packet.data.title : ''}
+                </b>
+                <div class='flexible content'>${packet.data.description}</div>`
+//                <div class='toggle-expand'>
+//                  <i class="fa-solid fa-circle-chevron-up"></i>
+//                </div>`
+              } else {
+                document.querySelector("footer").innerHTML = `<b>
+                  <i class="fa-solid fa-circle-notch fa-spin"></i> ${packet.data.title ? packet.data.title : ''}
+                </b>
+                <div class='flexible content'></div>`
+//                <div class='toggle-expand'>
+//                  <i class="fa-solid fa-circle-chevron-up"></i>
+//                </div>`
+              }
+            } else if (packet.data && packet.data.method) {
+              document.querySelector("footer").innerHTML = `<b>
+                <i class="fa-solid fa-circle-notch fa-spin"></i> (${packet.data.current+1}/${packet.data.total}) ${packet.data.method}
+              </b>
+              <div class='flexible content'>${packet.data.params ? JSON.stringify(packet.data.params) : ''}</div>`
+//              <div class='toggle-expand'>
+//                <i class="fa-solid fa-circle-chevron-up"></i>
+//              </div>`
+            }
+          } else if (packet.type === "stream") {
+            document.querySelector(".containers").classList.add("running")
+//            document.querySelector(".terminal-container").classList.remove("hidden")
+            if (packet.data.raw) {
+              this.term.write(packet.data.raw)
+            } else if (packet.data.json) {
+              this.term.write(JSON.stringify(packet.data.json).replace(/\n/g, "\r\n"))
+              this.term.write("\r\n")
+            } else if (packet.data.json2) {
+              this.term.write(JSON.stringify(packet.data.json2, null, 2).replace(/\n/g, "\r\n"))
+              this.term.write("\r\n")
+            }
+            document.querySelector(".run .play").classList.add("hidden")
+            document.querySelector(".run .starting").classList.add("hidden")
+            document.querySelector(".run .stop").classList.remove("hidden")
+          } else if (packet.type === 'disconnect') {
+//            refreshParent(packet)
+            reloadMemory()
+            this.term.write("\r\nNot connected...\r\n")
+            document.querySelector("footer").innerHTML = "<b>Ready</b>"
+            this.socket.close()
+            document.querySelector(".run .play").classList.remove("hidden")
+            document.querySelector(".run .stop").classList.add("hidden")
+            this.resizeSync.reset()
+
+            <% if (kill_message) { %>
+              n.Noty({
+                text: "<%-kill_message%>",
+  //              timeout: 3000,
+                <% if (callback) { %>
+                callbacks: {
+                  onClose: () => {
+                    location.href = "<%=callback%>"
+                  }
+                }
+                <% } %>
+              })
+            <% } else { %>
+              <% if (callback) { %>
+              location.href = "<%=callback%>"
+              <% } %>
+            <% } %>
+
+          } else if (packet.type === 'connect') {
+//            document.querySelector(".terminal-container").classList.remove("hidden")
+            const previousShellId = shell_id
+            if (packet.data.id) {
+              shell_id = packet.data.id
+            }
+            if (!previousShellId && shell_id) {
+              this.resizeSync.sendInitial()
+            }
+            if (packet.data) {
+              if (packet.data.shell) {
+                shell_id = packet.data.shell
+              }
+              this.resizeSync.sendInitial()
+              if (packet.data.state) {
+                this.write(packet.data.state)
+              }
+            }
+            /*
+            for(let i=0; i<message.length; i++) {
+              await new Promise((r, reject) => {
+                setTimeout(()=> {
+                  this.term.write(message[i])
+                  r()
+                }, 20)
+              })
+            }
+            */
+            document.querySelector(".run .play").classList.add("hidden")
+            document.querySelector(".run .starting").classList.add("hidden")
+            document.querySelector(".run .stop").classList.remove("hidden")
+          } else if (packet.type === 'resize') {
+            this.resizeSync.handleResizePacket(packet)
+          } else if (packet.type === 'wait.end') {
+            try {
+              Swal.close()
+            } catch (e) {
+            }
+            this.socket.respond({
+              response: {},
+              uri: packet.id
+            })
+          } else if (packet.type === 'wait') {
+            await WaitModal(packet.data)
+          } else if (packet.type === "htmlmodal") {
+            if (window.HtmlModal && typeof window.HtmlModal.handle === 'function') {
+              window.HtmlModal.handle(packet, this.socket)
+            }
+          } else if (packet.type === "modal") {
+            await SimpleModal(packet.data)
+            this.socket.respond({
+              response: {},
+              uri: packet.id
+            })
+          } else if (packet.type === "input") {
+            let params = packet.data
+            let type = (params.type ? params.type : "modal")
+            let input
+            if (type === "modal") {
+              input = await ModalInput(packet.data)
+            } else if (type === "notify") {
+              input = await NotifyInput(packet.data, n)
+            }
+            if (input) {
+              this.socket.respond({
+                response: input,
+                uri: packet.id
+                //uri: "<%=execUrl%>"
+              })
+            }
+            /*
+              params := {
+                title,
+                description,
+                form: [{
+                  title,
+                  description
+                }]
+              }
+            */
+          } else if (packet.type === "tab.open") {
+//            refreshParent(packet)
+          } else if (packet.type === "web.open") {
+          /*
+            {
+              "method": "web.open",
+              "params": {
+                "uri",
+                "target": "_self (default)"|"_blank"|"_parent"|"_top",
+                "features"
+              }
+            }
+            */
+
+            refreshParent()
+            let params = packet.data
+            window.open(
+              params.uri,
+              (params.target || "_self"),
+              params.features
+            )
+          } else if (packet.type === "browser.open") {
+          /*
+            {
+              "method": "browser.open",
+              "params": {
+                "uri",
+                "target": "_self (default)"|"_blank"|"_parent"|"_top",
+                "features"
+              }
+            }
+            */
+///// DEPRECATE browser.open : Pinokio IS the browser. Everything opens in Pinokio. May bring back when necessary
+//            refreshParent()
+//            let params = packet.data
+//            window.open(
+//              params.uri,
+//              (params.target || "_self"),
+//              params.features
+//            )
+          } else if (packet.type === "browser.close") {
+            let params = packet.data
+            if (params && params.target) {
+              let targetWindow = window.open('', params.target)
+              if (targetWindow) {
+                targetWindow.close();
+              }
+            } else {
+              window.close()
+            }
+          } else if (packet.type === "browser") {
+          /*
+            {
+              "method": "browser.close"
+            }
+          */
+            let { method, params } = packet.data
+            let resolved = window
+            let tokens = method.split(".")
+            for(let token of tokens) {
+              resolved = resolved[token]
+            }
+            let result = resolved(...params)
+          } else if (packet.type === "notify") {
+            console.log("notify packet", packet)
+
+          /*
+            {
+              html: <notification html>,
+              href: <link location to open>,
+              target: <target for window.open()>,
+              features: <windowFeatures>, ("self" => opens in pinokio)
+            }
+          */
+            if (packet.data) {
+              let payload = {}
+              if (packet.data.html) {
+                payload.text = packet.data.html
+              }
+              if (packet.data.type) {
+                payload.type = packet.data.type
+              }
+              payload.callbacks = {
+                onClick: () => {
+                  let params = packet.data
+                  if (params.href || params.uri) {
+                    window.open(
+                      params.uri || params.href,
+                      (params.target || "_self"),
+                      params.features
+                    )
+                  } else if (params.action === "close") {
+                    if (params && params.target) {
+                      let targetWindow = window.open('', params.target)
+                      if (targetWindow) {
+                        targetWindow.close();
+                      }
+                    } else {
+                      window.close()
+                    }
+                  }
+                }
+              }
+              n.Noty(payload)
+            }
+          } else if (packet.type === "result") {
+//            refreshParent(packet)
+            reloadMemory()
+            if (packet.data) {
+//              document.querySelector("#response").innerHTML = he.escape(JSON.stringify(packet.data, null, 2))
+            }
+          } else if (packet.type === "info") {
+            n.Noty({
+              text: `${packet.data}`,
+            })
+          } else if (packet.type === "error") {
+//            n.Noty({
+//              text: `${packet.data}`,
+//              type: "error"
+//            })
+//            this.socket.close()
+////            refreshParent(packet)
+//            reloadMemory()
+            //document.querySelector("footer").innerHTML = `<b><i class="fa-solid fa-triangle-exclamation"></i> ERROR</b><pre>${packet.data}</pre>`
+            document.querySelector("footer .content").innerHTML = document.querySelector("footer .content").innerHTML +  `<pre class='error'>${packet.data}</pre>`
+//            document.querySelector("footer .toggle-expand i").className = "fa-solid fa-circle-chevron-down"
+//            document.querySelector("footer").classList.add("expanded")
+            document.querySelector("footer i").className = "fa-solid fa-triangle-exclamation"
+
+            document.querySelector(".run .play").classList.remove("hidden")
+            document.querySelector(".run .starting").classList.add("hidden")
+            document.querySelector(".run .stop").classList.add("hidden")
+
+            document.querySelector("#error-screen").classList.remove("hidden")
+            document.querySelector("#error-screen pre").textContent = packet.data
+            let instance = new Mark(document.querySelector("#error-screen pre"), {
+              separateWordSearch: false,
+              accuracy: "exactly"
+            })
+            /*
+            document.querySelector("#error-screen").addEventListener("click", (e) => {
+              document.querySelector("#error-screen").classList.add("hidden")
+            })
+            */
+            if (packet.event) {
+              instance.mark(packet.event)
+              let element = document.querySelector("#error-screen mark")
+              if (element) {
+                element.scrollIntoView({ behavior: "smooth", block: "center" })
+              }
+            }
+
+          } else if (packet.type === "event") {
+            if (packet.data === "stop") {
+              document.querySelector("footer").innerHTML = "<b>Ready</b>"
+              setTimeout(() => {
+
+                let params = new URLSearchParams(location.search)
+                let entries = [...params.entries()]
+                let options;
+                if (entries.length > 0) {
+                  options = {}
+                  for(const [key, value] of entries) {
+                    options[key] = value;
+                  }
+                }
+                if (options && options.html) {
+                  n.Noty({
+                    text: options.html,
+                    callbacks: {
+                      onClose: () => {
+                        let uri = options.uri || options.href
+                        if (uri) {
+                          let target = options.target || "_self"
+                          let features = options.features
+                          window.open(uri, target, features)
+                        } else if (options.action === "close") {
+                          window.close()
+                        }
+                      }
+                    }
+                  })
+                }
+              /*
+                n.Noty({
+                  text: '[Notice] finished',
+                  type: 'success'
+                })
+                */
+                document.querySelector(".run .play").classList.remove("hidden")
+                document.querySelector(".run .starting").classList.add("hidden")
+                document.querySelector(".run .stop").classList.add("hidden")
+              }, 0)
+              console.log(">> stop close", mode)
+              this.socket.close()
+            }
+          }
+        })
+    }
+    async run (mode) {
+      this.mode = (mode ? mode : "run")
+      
+//      if (dirty) {
+//        await this.save()
+//        n.Noty({
+//          text: `script updated`,
+//        })
+//      }
+
+      <% if (theme === "dark") { %>
+      await this.createTerm(xtermTheme.FrontEndDelight)
+      <% } else { %>
+      await this.createTerm(xtermTheme.Tomorrow)
+      <% } %>
+      await this.start(mode)
+    }
+    async createTerm (_theme) {
+      if (!this.term) {
+        const theme = Object.assign({ }, _theme, {
+          selectionBackground: "red",
+          selectionForeground: "white"
+        })
+        let config = {
+          scrollback: 9999999,
+          fontSize: 14,
+          fontFamily: 'monospace',
+          theme,
+        }
+        let res = await fetch("/xterm_config").then((res) => {
+          return res.json()
+        })
+        if (res && res.config) {
+          config = res.config
+        }
+        const baseConfig = Object.assign({}, config)
+        if (window.PinokioTerminalSettings && typeof window.PinokioTerminalSettings.applyToConfig === 'function') {
+          config = window.PinokioTerminalSettings.applyToConfig(config)
+        }
+        const term = new Terminal(config)
+        if (window.PinokioTerminalSettings && typeof window.PinokioTerminalSettings.register === 'function') {
+          window.PinokioTerminalSettings.register(term, { baseConfig })
+        }
+        term.open(document.querySelector("#terminal"))
+        const terminalContainer = document.querySelector("#terminal")
+        window.PinokioTouch.bindTerminalFocus(term, terminalContainer)
+
+
+        term.attachCustomKeyEventHandler(event => {
+          if (event.ctrlKey && event.key === 'c' && term.hasSelection()) {
+            return false;
+          }
+          if (event.ctrlKey && event.key === 'v' && this._options.pasteWithCtrlV) {
+            return false;
+          }
+          return true;
+        });
+
+
+        const fitAddon = new FitAddon.FitAddon();
+        //const searchAddon = new SearchAddon.SearchAddon();
+        //const searchAddonBar = new SearchBarAddon.SearchBarAddon({searchAddon});
+        term.loadAddon(fitAddon);
+        <% if (agent === "electron") { %>
+          term.loadAddon(new WebLinksAddon.WebLinksAddon((event, uri) => {
+            window.open(uri, "_blank")
+          }))
+        <% } else { %>
+          term.loadAddon(new WebLinksAddon.WebLinksAddon());
+        <% } %>
+        //term.loadAddon(searchAddon)
+        //term.loadAddon(searchAddonBar);
+        //searchAddonBar.show();
+        fitAddon.fit();
+        this.fit = fitAddon
+        this.term = term
+        this.resizeSync.updateTerm(this.term, this.fit, this.socket)
+      }
+      this.term.focus()
+      if (!this.observer) {
+        this.observer = new ResizeObserver(() => {
+          this.fit.fit()
+          this.resizeSync.sendResize(this.term.cols, this.term.rows)
+        })
+        this.observer.observe(document.body)
+      }
+    }
+  }
+  <% if (!install_required) { %>
+    const rpc = new RPC()
+
+
+    <% if (mod && runnable) { %>
+    /*
+    if (document.querySelector("#terminal-resize")) {
+      document.querySelector("#terminal-resize").addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation()
+        let url = new URL(location.href)
+        url.searchParams.set('fullscreen', 'true')
+        location.href = url.toString()
+      })
+    }
+    */
+    if (document.querySelector(".stop")) {
+      document.querySelector(".stop").addEventListener("click", async (e) => {
+        await rpc.stop()
+        document.querySelector(".run .play").classList.remove("hidden")
+        document.querySelector(".run .starting").classList.add("hidden")
+        document.querySelector(".run .stop").classList.add("hidden")
+      })
+    }
+    if (document.querySelector(".play")) {
+      document.querySelector(".play").addEventListener("click", async (e) => {
+        document.querySelector(".run .play").classList.add("hidden")
+        document.querySelector(".run .starting").classList.remove("hidden")
+        //document.querySelector(".terminal-container").classList.remove("hidden")
+        await rpc.run()
+      })
+    }
+    <% } %>
+    if (document.querySelector("#save")) {
+      document.querySelector("#save").addEventListener("click", async (e) => {
+        console.log("SAVE")
+        await rpc.save()
+        n.Noty({
+          text: `saved`,
+        })
+      })
+    }
+    <% if (stop) { %>
+      await rpc.stop()
+      document.querySelector(".run .play").classList.remove("hidden")
+      document.querySelector(".run .starting").classList.add("hidden")
+      document.querySelector(".run .stop").classList.add("hidden")
+    <% } else { %>
+      <% if (run) { %>
+        // run (query params run=true)
+        document.querySelector(".run .play").classList.add("hidden")
+        document.querySelector(".run .starting").classList.remove("hidden")
+        rpc.run()
+      <% } else { %>
+        rpc.run("listen")
+      <% } %>
+    <% } %>
+  <% } %>
+//  document.querySelector(".memory").addEventListener("click", async (e) => {
+//    let target = e.target.classList.contains("tunnel") ? e.target : e.target.closest(".tunnel")
+//    let target2 = e.target.classList.contains("tunnel-stop") ? e.target : e.target.closest(".tunnel-stop")
+//    if (target) {
+//      e.preventDefault()
+//      e.stopPropagation()
+//      let url = target.getAttribute("data-url")
+//      const token = prompt("Enter an Ngrok auth token to expose your machine to the public Internet https://ngrok.com/")
+//      if (token && token.length > 0) {
+//        let response = await fetch("/pinokio/tunnel", {
+//          method: "POST",
+//          headers: {
+//            "Content-Type": "application/json"
+//          },
+//          body: JSON.stringify({ url, action: "start", token })
+//        }).then((res) => {
+//          return res.json()
+//        })
+//        await reloadMemory()
+//      }
+//    } else if (target2) {
+//      console.log("target2", target2)
+//      e.preventDefault()
+//      e.stopPropagation()
+//      let url = target2.getAttribute("data-url")
+//      let response = await fetch("/pinokio/tunnel", {
+//        method: "POST",
+//        headers: {
+//          "Content-Type": "application/json"
+//        },
+//        body: JSON.stringify({ url, action: "stop" })
+//      }).then((res) => {
+//        return res.json()
+//      })
+//      await reloadMemory()
+//    }
+//  })
+  if (document.querySelector("#lv")) {
+    document.querySelector("#lv").addEventListener("click", (e) => {
+      let m = e.target.closest(".memory")
+      m.classList.toggle("collapsed")
+      if (m.classList.contains("collapsed")) {
+        m.querySelector("i").className = "fa-solid fa-sort-down"
+      } else {
+        m.querySelector("i").className = "fa-solid fa-sort-up"
+      }
+    })
+  }
+  document.querySelector("#close-error-screen").addEventListener('click', (e) => {
+    document.querySelector("#error-screen").classList.add("hidden")
+  })
+  if (document.querySelector("#del-bin")) {
+    document.querySelector("#del-bin").addEventListener("click", async (e) => {
+      console.log("del-bin")
+      let proceed = confirm("Are you sure you wish to delete the bin folder?")
+      if (proceed) {
+        document.querySelector(".reset-bin-loading").classList.remove("hidden")
+        document.querySelector("#del-bin").classList.add("hidden")
+        let res = await fetch("/pinokio/delete", {
+          method: "post",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ type: "bin" })
+        }).then((res) => {
+          return res.json()
+        })
+        console.log(res)
+        document.querySelector(".reset-bin-loading").classList.add("hidden")
+        if (res.error) {
+          alert(res.error)
+        } else {
+          document.querySelector("#install-form").submit()
+          //location.href = location.href
+        }
+      }
+    })
+  }
+  /*
+  document.querySelector("#open-log").addEventListener("click", async (e) => {
+    let logs = await fetch("/getlog?logpath=<%=logpath%>").then((res) => {
+      return res.text()
+    })
+    console.log(logs)
+  })
+  */
+})
+const reloadMemory = async () => {
+//  let url = "/pinokio/memory?filepath=" + encodeURI("<%-filepath%>")
+//  console.log("Url", url)
+//  let memory = await fetch(url).then((res) => {
+//    return res.json()
+//  })
+//  console.log("memory", memory)
+//  document.querySelector(".memory table").innerHTML = memory.map((m) => {
+//    let html = `<tr><td>local.${m.key}</td><td>${m.val}</td>`
+//    if (m.localhost) {
+//      if (m.tunnel) {
+//        html += `<td>${m.tunnel}</td>
+//  <td><a class='btn2' target="_blank" href="${m.tunnel}"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open</a></td>
+//  <td><button data-url="${m.val}" class='btn2 tunnel-stop'><i class="fa-solid fa-lock-closed"></i> Make Private</button></td>`
+//      } else {
+//        html += `<td><button data-url="${m.val}" class='btn2 tunnel'><i class="fa-solid fa-lock-open"></i> Make Public</button></td>`
+//      }
+//    }
+//    html += "</tr>"
+//    return html
+//  }).join("")
+}
+</script>
+</head>
+<% if (install_required) { %>
+<body class='columns frozen <%=theme%>'>
+<% } else { %>
+<body class='columns <%=theme%>'>
+<% } %>
+  <header class='navheader'>
+  <h1>
+  <% paths.forEach((path) => { %>
+    <% if (path.action) { %>
+      <a class='path nav-button' id="<%=path.id%>" onclick="<%=path.action%>"><%-path.name%></a>
+    <% } else if (path.path) { %>
+      <a class='path' href="<%=path.path%>"><%-path.name%></a>
+    <% } %>
+  <% }) %>
+  </h1>
+  <% if (false) { %>
+  <a class='gitremote' data-filepath="<%=filepath%>"><%=filepath%></a>
+  <div class='pinokiourl'><i class="fa-solid fa-link"></i><%=pinokioPath%></div>
+  <% } %>
+  <% if (!install_required) { %>
+    <div class='runner'>
+      <div class='btn run <%= mod && runnable ? "" : "hidden" %>'>
+        <span class='play'><i class="fa-solid fa-play"></i> Run</span>
+        <span class='starting hidden'><i class="fa-solid fa-circle-notch fa-spin"></i> Starting...</span>
+        <span class='stop hidden'><i class="fa-solid fa-stop"></i> Stop</span>
+      </div>
+      <button class='btn' id='open-fs' data-filepath="<%=filepath%>"><i class="fa-solid fa-eye"></i> Script</button>
+      <!--
+      <button class='btn' id='open-log' data-logpath="<%=logpath%>"><i class="fa-solid fa-align-left"></i> View Logs</button>
+      -->
+      <!--
+      <button class='btn' id='source' data-editor-url="<%=editorUrl%>">Navigate</button>
+      -->
+      <div id='save' class='btn disabled'>
+        <span class='save'><i class="fa-solid fa-check"></i> Save</span>
+      </div>
+    </div>
+  <% } %>
+  </header>
+  <% if (requirements_pending) { %>
+    <div class='requirements'>
+      <div class='content'>
+        <div class='loading'>
+          <i class="fa-solid fa-circle-notch fa-spin"></i>
+        </div>
+      </div>
+    </div>
+  <% } else { %>
+    <% if (install_required) { %>
+      <div class='requirements'>
+        <div class='content'>
+          <div class='title'><i class="fa-solid fa-circle-exclamation"></i> Installation required</div>
+          <div class='btn-group'>
+            <% requirements.map((r) => { %>
+              <div class='requirement-item'>
+                <% if (r.installed) { %>
+                  <div class='name'><%=r.type ? `${r.type} : ${r.name}` : r.name%></div>
+                  <div class='flexible'></div>
+                  <div class='label'>Installed</div>
+                <% } else { %>
+                  <div class='name highlighted'><%=r.type ? `${r.type} : ${r.name}` : r.name%></div>
+                  <div class='flexible'></div>
+                  <div class='label highlighted'>Not Installed</div>
+                <% } %>
+              </div>
+            <% }) %>
+          </div>
+          <form id='install-form' method="post" action="/pinokio/install">
+            <input type='hidden' name="requirements" value="<%=JSON.stringify(requirements)%>">
+            <input type='hidden' name='callback' value="<%=current%>">
+            <button class='btn'>Install</button>
+          </form>
+          <div class='item'>
+            <div class='d'>Not working? <a id='del-bin'>Try a fresh install</a></div>
+            <div class='reset-bin-loading hidden'>
+              <i class="fa-solid fa-circle-notch fa-spin"></i> Stand by. Do not close this window..
+            </div>
+          </div>
+        </div>
+      </div>
+    <% } else { %>
+      <div class='containers'>
+        <main>
+          <!--
+          <pre id='response'></pre>
+          -->
+          <div id='editor'><%=content%></div>
+        </main>
+        <div class='terminal-container'>
+          <% if (memory.length > 0) { %>
+            <div class='memory'>
+              <div class='memory-header'>
+                <div>Memory</div>
+                <div class='flexible'></div>
+                <div id='lv' class='btn2'><i class="fa-solid fa-sort-up"></i></div>
+              </div>
+              <table>
+              <% memory.forEach((m) => { %>
+                <tr>
+                  <td>local.<%=m.key%></td>
+                  <td><%=m.val%></td>
+                  <% if (m.localhost) { %>
+                    <% if (m.tunnel) { %>
+                      <td><%=m.tunnel%></td>
+                      <td><a class='btn2' target="_blank" href="<%=m.tunnel%>"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open</a></td>
+                      <td><button data-url="<%=m.val%>" class='btn2 tunnel-stop'><i class="fa-solid fa-lock-closed"></i> Make Private</button></td>
+                    <% } else { %>
+                      <td><button data-url="<%=m.val%>" class='btn2 tunnel'><i class="fa-solid fa-lock-open"></i> Make Public</button></td>
+                    <% } %>
+                  <% } %>
+                </tr>
+              <% }) %>
+              </table>
+            </div>
+          <% } else { %>
+            <div class='memory'>
+              <div class='memory-header'>
+                <div>Memory</div>
+                <div class='flexible'></div>
+                <div id='lv' class='btn2'><i class="fa-solid fa-sort-up"></i></div>
+              </div>
+              <table></table>
+            </div>
+          <% } %>
+          <div id='terminal'></div>
+        </div>
+      </div>
+      <footer><b>Ready</b></footer>
+    <% } %>
+  <% } %>
+  <div id='error-screen' class='hidden'>
+    <pre></pre>
+    <div id='error-screen-footer'>
+      <a class='btn' id='close-error-screen'>
+        <div><i class="fa-solid fa-xmark"></i></div>
+      </a>
+      <div class='flexible'></div>
+      <button type='button' class='btn' data-ask-ai-trigger="true" data-workspace="<%= (typeof projectName !== 'undefined' && projectName) ? projectName : '' %>">
+        <div><i class="fa-solid fa-robot"></i> Ask AI</div>
+      </button>
+      <a class='btn' href="<%=portal%>" target="_blank">
+        <div><i class="fa-solid fa-question"></i> Ask Community</div>
+      </a>
+    </div>
+  </div>
+</body>
+</html>

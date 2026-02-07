@@ -1,0 +1,387 @@
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<link href="/xterm.min.css" rel="stylesheet" />
+<link href="/css/fontawesome.min.css" rel="stylesheet">
+<link href="/css/solid.min.css" rel="stylesheet">
+<link href="/css/regular.min.css" rel="stylesheet">
+<link href="/css/brands.min.css" rel="stylesheet">
+<link href="/markdown.css" rel="stylesheet"/>
+<link href="/noty.css" rel="stylesheet"/>
+<link href="/style.css" rel="stylesheet"/>
+<% if (agent === "electron") { %>
+  <link href="/electron.css" rel="stylesheet"/>
+<% } %>
+<style>
+body {
+  height: 100%;
+  overflow: hidden;
+  /*
+  background: rgb(44, 29, 22);
+  */
+  display: flex;
+  flex-direction: column;
+}
+#terminal {
+  flex-grow: 1;
+}
+.line2 {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  background: rgba(0,0,100,0.04);
+}
+.line2 a {
+  text-decoration: none;
+  color: black;
+}
+.status {
+  padding: 10px;
+  margin: 10px;
+  border-radius: 10px;
+}
+.status.offline {
+  background: silver;
+}
+.status.online {
+  background: yellowgreen;
+}
+.switch {
+  padding: 10px;
+  margin: 10px 0;
+}
+.switch[data-online=true] {
+  color: yellowgreen;
+}
+.button {
+  padding: 10px;
+}
+.on, .off {
+  display: flex;
+  align-items: center;
+}
+.btn {
+  margin-right: 5px;
+  font-weight: normal;
+}
+.item {
+  display: flex;
+  align-items: flex-start;
+  margin: 10px;
+}
+.item img {
+  width: 100px;
+}
+.item .title {
+  text-decoration: none;
+  color: rgba(127, 91, 243, 0.9);
+}
+.item .col {
+  padding: 10px;
+}
+.item .col > * {
+  margin: 5px 0;
+}
+.item .stat {
+  color: rgba(0,0,0,0.8);
+  display: flex;
+}
+.item .stat > * {
+  margin-right: 15px;
+}
+.timestamp {
+  color: rgba(0,0,0,0.5);
+}
+#status-screen {
+  padding: 15px;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  /*
+  margin-bottom: 10px;
+  */
+  overflow: auto;
+  background: rgba(127, 91, 243, 0.9);
+  color: white;
+  /*
+  border-left: 5px solid rgba(127, 91, 243, 0.9);
+  color: rgb(27, 28, 29);
+  */
+}
+#status-screen b {
+  color: white;
+  font-weight: normal;
+  font-size: 16px;
+}
+</style>
+<script src="/hotkeys.min.js"></script>
+<script src="/sweetalert2.js"></script>
+<script src="/noty.js"></script>
+<script src="/notyq.js"></script>
+<script src="/xterm.js"></script>
+<script src="/xterm-inline-bridge.js"></script>
+<script src="/xterm-addon-fit.js"></script>
+<script src="/xterm-addon-web-links.js"></script>
+<script src="/xterm-theme.js"></script>
+<script src="/Socket.js"></script>
+<script src="/terminal-settings.js"></script>
+<script src="/pinokio-touch.js"></script>
+<!--
+<script src="/install.js"></script>
+-->
+<script src="/timeago.min.js"></script>
+<script src="/common.js"></script>
+<script src="/autoexpand.js"></script>
+<script src="/modalinput.js"></script>
+<script src="/simplemodal.js"></script>
+<script src="/waitmodal.js"></script>
+<script src="/notifyinput.js"></script>
+</head>
+<body class='<%=theme%>' data-agent="<%=agent%>">
+<header class='grabbable'></header>
+<div class='terminal-container'>
+  <div id='terminal'></div>
+</div>
+<div id='status-screen'><b><i class="fas fa-circle-notch fa-spin"></i> Setting up...</b><br>Setting up core modules including conda, uv, git, etc.</div>
+<input id='requirements' type='hidden' value="<%=requirements%>">
+<input id='callback' type='hidden' value="<%=callback%>">
+<script>
+//
+// /install_bin?type=bin&uri=conda
+//
+let shell_id
+let fitAddon
+const createTerm = async (_theme) => {
+  //const theme = Object.assign({ }, xtermTheme.Terminal_Basic, {
+  const theme = Object.assign({ }, _theme, {
+    selectionBackground: "red",
+    selectionForeground: "white"
+  })
+  <% if (theme !== "dark") { %>
+    theme.foreground = "black"
+  <% } %>
+  let config = {
+    scrollback: 9999999,
+    fontSize: 14,
+    fontFamily: 'monospace',
+    theme,
+  }
+  let res = await fetch("/xterm_config").then((res) => {
+    return res.json()
+  })
+  if (res && res.config) {
+    config = res.config
+  }
+  const baseConfig = Object.assign({}, config)
+  if (window.PinokioTerminalSettings && typeof window.PinokioTerminalSettings.applyToConfig === 'function') {
+    config = window.PinokioTerminalSettings.applyToConfig(config)
+  }
+  const term = new Terminal(config)
+  if (window.PinokioTerminalSettings && typeof window.PinokioTerminalSettings.register === 'function') {
+    window.PinokioTerminalSettings.register(term, { baseConfig })
+  }
+  term.open(document.querySelector("#terminal"))
+  const terminalContainer = document.querySelector("#terminal")
+  window.PinokioTouch.bindTerminalFocus(term, terminalContainer)
+
+  term.attachCustomKeyEventHandler(event => {
+    if (event.ctrlKey && event.key === 'c' && term.hasSelection()) {
+      return false;
+    }
+    if (event.ctrlKey && event.key === 'v' && this._options.pasteWithCtrlV) {
+      return false;
+    }
+    return true;
+  });
+
+  fitAddon = new FitAddon.FitAddon();
+  term.loadAddon(fitAddon);
+  <% if (agent === "electron") { %>
+    term.loadAddon(new WebLinksAddon.WebLinksAddon((event, uri) => {
+      window.open(uri, "_blank")
+    }))
+  <% } else { %>
+    term.loadAddon(new WebLinksAddon.WebLinksAddon());
+  <% } %>
+  fitAddon.fit();
+  term.focus()
+  return term
+}
+document.addEventListener("DOMContentLoaded", async () => {
+  const n = new N()
+  let socket = new Socket()
+  <% if (theme === "dark") { %>
+  let term = await createTerm(xtermTheme.FrontEndDelight)
+  <% } else { %>
+  let term = await createTerm(xtermTheme.Tomorrow)
+  <% } %>
+  let params = new URLSearchParams(location.search)
+  let entries = [...params.entries()]
+  let options;
+  if (entries.length > 0) {
+    options = {}
+    for(const [key, value] of entries) {
+      options[key] = value;
+    }
+  }
+  term.onData((data) => {
+    if (shell_id) {
+      socket.emit({
+        id: shell_id,
+        key: data
+      })
+    }
+  })
+  let observer = new ResizeObserver(() => {
+    fitAddon.fit()
+  });
+  observer.observe(document.body)
+  await new Promise((resolve, reject) => {
+    console.log({ cols: term.cols, rows: term.rows })
+    socket.run({
+      id: location.pathname,
+      method: "kernel.bin.install",
+//      params: options,
+      params: document.querySelector("#requirements").value,
+      client: {
+        cols: term.cols,
+        rows: term.rows,
+      }
+    }, async (packet) => {
+      console.log("packet", packet)
+      if (packet.type === "stream") {
+        if (packet.data.id) {
+          shell_id = packet.data.id
+        }
+        term.write(packet.data.raw)
+      } else if (packet.type === "shell.kill") {
+        socket.close()
+      } else if (packet.type === "result") {
+        resolve() 
+      } else if (packet.type === "error") {
+        //term.write("\r\n" + packet.data + "\r\n")
+        ModalInput({
+          title: "Error",
+          type: "modal",
+          description: packet.data
+        })
+      } else if (packet.type === "notify3") {
+        console.log("HTML", packet.data)
+        if (packet.data) {
+          let payload = {}
+          if (packet.data.html) {
+            payload.text = packet.data.html
+          }
+          if (packet.data.type) {
+            payload.type = packet.data.type
+          }
+          document.querySelector("#status-screen").innerHTML = packet.data.html
+          let audio = new Audio("/chime.mp3")
+          audio.play()
+          ModalInput({
+            title: "Notice",
+            type: "modal",
+            description: packet.data.html,
+            confirm: "OK",
+          })
+        }
+      } else if (packet.type === "notify2") {
+        console.log("HTML", packet.data)
+        if (packet.data) {
+          let payload = {}
+          if (packet.data.html) {
+            payload.text = packet.data.html
+          }
+          if (packet.data.type) {
+            payload.type = packet.data.type
+          }
+          document.querySelector("#status-screen").innerHTML = packet.data.html
+        }
+      } else if (packet.type === "notify") {
+        console.log("HTML", packet.data)
+        if (packet.data) {
+          let payload = {}
+          if (packet.data.html) {
+            payload.text = packet.data.html
+          }
+          if (packet.data.type) {
+            payload.type = packet.data.type
+          }
+          n.Noty(payload)
+        }
+      } else if (packet.type === "input") {
+        let params = packet.data
+        /*
+          params := {
+            title,
+            description,
+            form: [{
+              title,
+              description
+            }]
+          }
+        */
+        let type = (params.type ? params.type : "modal")
+        let input
+        if (type === "modal") {
+          input = await ModalInput(packet.data)
+        } else if (type === "notify") {
+          input = await NotifyInput(packet.data, n)
+        }
+        console.log("RESPOND", { input, packet })
+        if (input) {
+          socket.respond({
+            response: input,
+            uri: packet.id
+          })
+        }
+      }
+    })
+  })
+  const LoadingDialog = {
+    start: (msg) => {
+      Swal.fire({
+        html: `<i class="fa-solid fa-circle-notch fa-spin"></i> ${msg}`,
+        customClass: {
+          container: "loader-container",
+          popup: "loader-popup",
+          htmlContainer: "loader-dialog",
+          footer: "hidden",
+          actions: "hidden"
+        }
+      });
+    },
+    end: () => {
+      Swal.close()
+    }
+  }
+  LoadingDialog.start("Restarting...")
+  fetch("/restart", {
+    method: "post"
+  }, () => {
+  })
+  setInterval(async () => {
+    try {
+      let res = await fetch("/bin_ready").then((res) => {
+        return res.json()
+      })
+      if (res.success) {
+        //location.href = location.href
+        LoadingDialog.end()
+        location.href = document.querySelector("#callback").value
+      }
+    } catch (e) {
+      console.log(e)
+    }
+  }, 1000)
+//  let ok = confirm("Install Complete! Click OK to Proceed.")
+//  if (ok) {
+//  }
+
+
+//    location.href = document.querySelector("#callback").value
+})
+</script>
+</body>
+</html>

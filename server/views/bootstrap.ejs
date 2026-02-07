@@ -1,0 +1,251 @@
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="/xterm.min.css" rel="stylesheet" />
+<link href="/css/fontawesome.min.css" rel="stylesheet">
+<link href="/css/solid.min.css" rel="stylesheet">
+<link href="/css/regular.min.css" rel="stylesheet">
+<link href="/css/brands.min.css" rel="stylesheet">
+<link href="/markdown.css" rel="stylesheet"/>
+<link href="/noty.css" rel="stylesheet"/>
+<link href="/style.css" rel="stylesheet"/>
+<% if (agent === "electron") { %>
+  <link href="/electron.css" rel="stylesheet"/>
+<% } %>
+<style>
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  font-size: 14px;
+  font-family: Sans-serif;
+}
+#terminal {
+  text-align: left;
+  margin: 30px 0;
+}
+#error {
+  text-align: left;
+}
+
+.animate {
+  animation: animate 3s ease;
+}
+
+@-webkit-keyframes animate {
+  10% {
+    transform: scale(1, 0.002);
+  }
+  35% {
+    transform: scale(0.2, 0.002);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.2, 0.002);
+    opacity: 0;
+  }
+  85% {
+    transform: scale(1, 0.002);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(0, 0);
+    opacity: 0;
+  }
+}
+@keyframes animate {
+  10% {
+    transform: scale(1, 0.002);
+  }
+  35% {
+    transform: scale(0.2, 0.002);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.2, 0.002);
+    opacity: 0;
+  }
+  85% {
+    transform: scale(1, 0.002);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(0, 0);
+    opacity: 0;
+  }
+}
+</style>
+<script src="/noty.js"></script>
+<script src="/notyq.js"></script>
+<script src="/pinokio-touch.js"></script>
+<script src="/xterm.js"></script>
+<script src="/xterm-inline-bridge.js"></script>
+<script src="/xterm-addon-fit.js"></script>
+<script src="/xterm-addon-web-links.js"></script>
+<script src="/xterm-theme.js"></script>
+<script src="/sweetalert2.js"></script>
+<script src="/Socket.js"></script>
+<script src="/terminal-settings.js"></script>
+<script>
+function isASCII(str) {
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if (code < 0 || code > 127) {
+      return false;
+    }
+  }
+  return true;
+}
+function includesSpace(str) {
+  return /\s/.test(str);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  let audio = new Audio('beep.wav');
+  document.querySelector("#bootstrap").addEventListener("click", async (e) => {
+
+    let home = document.querySelector("#home").value
+
+    if (home && home.length > 0) {
+
+      if (!isASCII(home)) {
+        alert("The Pinokio home folder cannot contain non ASCII characters. Select a different path.")
+        return
+      }
+
+      if (includesSpace(home)) {
+        alert("The Pinokio home folder cannot contain blank spaces. Select a different path.")
+        return
+      }
+
+      audio.play();
+
+      document.querySelector(".loading").classList.remove("hidden")
+
+      document.querySelector("#bootstrap").classList.add("hidden")
+      document.querySelector(".explain").classList.add("hidden")
+
+      <% if (theme === "dark") { %>
+      let _theme = xtermTheme.FrontEndDelight
+      <% } else { %>
+      let _theme = xtermTheme.Tomorrow
+      <% } %>
+      const theme = Object.assign({ }, _theme, {
+        selectionBackground: "red",
+        selectionForeground: "white"
+      })
+      let config = {
+        scrollback: 9999999,
+        fontSize: 14,
+        fontFamily: 'monospace',
+        theme,
+      }
+      let res = await fetch("/xterm_config").then((res) => {
+        return res.json()
+      })
+      if (res && res.config) {
+        config = res.config
+      }
+      const baseConfig = Object.assign({}, config)
+      if (window.PinokioTerminalSettings && typeof window.PinokioTerminalSettings.applyToConfig === 'function') {
+        config = window.PinokioTerminalSettings.applyToConfig(config)
+      }
+      const term = new Terminal(config)
+      if (window.PinokioTerminalSettings && typeof window.PinokioTerminalSettings.register === 'function') {
+        window.PinokioTerminalSettings.register(term, { baseConfig })
+      }
+      const fitAddon = new FitAddon.FitAddon();
+      term.loadAddon(fitAddon);
+      term.loadAddon(new WebLinksAddon.WebLinksAddon());
+      term.open(document.querySelector("#terminal"))
+      const terminalContainer = document.querySelector("#terminal")
+      window.PinokioTouch.bindTerminalFocus(term, terminalContainer)
+      fitAddon.fit();
+
+      let socket = new Socket()
+      const n = new N()
+      await new Promise((resolve, reject) => {
+        socket.run({
+          id: location.pathname,
+          method: "kernel.bin.bootstrap",
+          params: {
+            home
+          }
+        }, (packet) => {
+          if (packet.type === "stream") {
+            term.write(packet.data.raw)
+          } else if (packet.type === "result") {
+            resolve() 
+          } else if (packet.type === "error") {
+            //term.write("\r\n" + packet.data + "\r\n")
+            document.querySelector("#error").innerHTML = document.querySelector("#error").innerHTML + packet.data + "\r\n"
+          }
+        })
+      })
+
+      audio.play();
+
+      n.Noty({
+        text: "Success!",
+        callbacks: {
+          onClick: () => {
+            
+          }
+        }
+      })
+
+      document.querySelector(".loading").classList.add("hidden")
+
+      document.querySelector("#next").classList.remove("hidden")
+      document.querySelector("#next").addEventListener("click", () => {
+        audio.play();
+        fetch("/restart", {
+          method: "post"
+        }, () => {
+        })
+        document.body.classList.add("animate")
+        document.querySelector(".loading span").innerHTML = "Restarting..."
+        document.querySelector(".loading").classList.remove("hidden")
+
+        setInterval(async () => {
+          try {
+            let res = await fetch("/check").then((res) => {
+              return res.json()
+            })
+            if (res.success) {
+              location.href = location.href
+            }
+          } catch (e) {
+            console.log(e)
+          }
+        }, 1000)
+      })
+
+    }
+  })
+})
+
+</script>
+</head>
+<body class='fullscreen'>
+<div class='bootstrap'>
+  <div class='intro'>
+    <h1><img src='/pinokio-white.png'><div>pinokio</div></h1>
+    <div class='field'>
+      <div class='explain'>
+        <div class='label'>Select an install folder and press "Setup"</div>
+        <input id='home' type='text' value="<%=home%>" placeholder="Pinokio file system home">
+      </div>
+      <button id='bootstrap' class='btn'><i class="fa-solid fa-play"></i> Setup</button>
+      <button id='next' class='btn hidden'><i class="fa-solid fa-rocket"></i> Launch</button>
+    </div>
+  </div>
+  <div class='loading hidden'><i class="fa-solid fa-circle-notch fa-spin"></i> <span>Setting up...</span></div>
+  <pre id='error'></pre>
+  <div id='terminal'></div>
+</div>
+</body>
+</html>
