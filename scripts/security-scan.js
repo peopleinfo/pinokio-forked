@@ -531,6 +531,189 @@ const findings = [
       };
     },
   },
+
+  // ─── EXTERNAL DATA EXPOSURE FINDINGS (#21-#26) ───────────────
+
+  {
+    id: 21,
+    name: "Open HTTP proxy (net.request)",
+    severity: "CRITICAL",
+    exploitability: 9,
+    impact: 9,
+    weight: 3,
+    category: "External Exposure",
+    check: () => {
+      // kernel/api/net/index.js: axios(req.params) — forwards ANY request
+      const content = readFile("kernel/api/net/index.js");
+      if (!content) return { fixed: true, detail: "net/index.js not found" };
+      const hasOpenProxy =
+        content.includes("axios(req.params)") ||
+        content.includes("axios(req.body)");
+      const hasValidation =
+        content.includes("allowlist") ||
+        content.includes("whitelist") ||
+        content.includes("allowedHosts");
+      return {
+        fixed: !hasOpenProxy || hasValidation,
+        detail:
+          hasOpenProxy && !hasValidation
+            ? "SSRF: kernel/api/net/index.js passes user params directly to axios — any URL can be fetched as the server"
+            : hasValidation
+              ? "URL allowlist found"
+              : "No open proxy detected",
+      };
+    },
+  },
+  {
+    id: 22,
+    name: "Cloudflare tunnel exposes local server",
+    severity: "HIGH",
+    exploitability: 5,
+    impact: 9,
+    weight: 2,
+    category: "External Exposure",
+    check: () => {
+      const hasCloudflare = fileContains(
+        "kernel/api/cloudflare/index.js",
+        "cloudflared tunnel",
+      );
+      const hasPasscodeRequired =
+        fileContains("kernel/api/cloudflare/index.js", "passcode") &&
+        fileContains("kernel/api/cloudflare/index.js", "req.params.passcode");
+      return {
+        fixed: !hasCloudflare,
+        partial: hasPasscodeRequired,
+        detail: hasCloudflare
+          ? hasPasscodeRequired
+            ? "Cloudflare tunneling active — passcode option exists but is optional (can be bypassed)"
+            : "Cloudflare tunneling gives full public internet access to local server — no auth"
+          : "No Cloudflare tunnel integration found",
+      };
+    },
+  },
+  {
+    id: 23,
+    name: "Twitter/X API with stored tokens",
+    severity: "MEDIUM",
+    exploitability: 4,
+    impact: 7,
+    weight: 1,
+    category: "External Exposure",
+    check: () => {
+      const content = readFile("kernel/connect/providers/x/index.js");
+      if (!content) return { fixed: true, detail: "X provider not found" };
+      const hasStoredTokens =
+        content.includes("x.json") && content.includes("persist");
+      const hasEncryption =
+        content.includes("encrypt") || content.includes("cipher");
+      const hasClientId = content.includes(
+        "d2FQZ0U4NXpzYnRyS1hZeHBvbUc6MTpjaQ",
+      );
+      let detail = [];
+      if (hasStoredTokens && !hasEncryption)
+        detail.push("OAuth tokens stored in plaintext (connect/x.json)");
+      if (hasClientId) detail.push("Hardcoded Twitter client ID (base64)");
+      return {
+        fixed: (!hasStoredTokens || hasEncryption) && !hasClientId,
+        detail:
+          detail.length > 0
+            ? detail.join("; ")
+            : "X/Twitter integration is secure",
+      };
+    },
+  },
+  {
+    id: 24,
+    name: "LAN peer discovery broadcasts system info",
+    severity: "MEDIUM",
+    exploitability: 4,
+    impact: 6,
+    weight: 1.5,
+    category: "External Exposure",
+    check: () => {
+      const content = readFile("kernel/peer.js");
+      if (!content) return { fixed: true, detail: "peer.js not found" };
+      const hasUdpBroadcast =
+        content.includes("dgram") && content.includes("setBroadcast(true)");
+      const hasPeerRefresh =
+        content.includes("/pinokio/peer/refresh") &&
+        content.includes("axios.post");
+      const exposesSystemInfo =
+        content.includes("platform") &&
+        content.includes("gpu") &&
+        content.includes("memory");
+      let detail = [];
+      if (hasUdpBroadcast) detail.push("UDP broadcast on LAN discovers peers");
+      if (hasPeerRefresh)
+        detail.push("HTTP POST shares system info with LAN peers");
+      if (exposesSystemInfo)
+        detail.push(
+          "Exposes: hostname, platform, arch, GPU, memory, installed apps, process list",
+        );
+      return {
+        fixed: !hasUdpBroadcast && !hasPeerRefresh,
+        detail:
+          detail.length > 0 ? detail.join("; ") : "No peer discovery active",
+      };
+    },
+  },
+  {
+    id: 25,
+    name: "Checkpoint data sent to external registry",
+    severity: "MEDIUM",
+    exploitability: 3,
+    impact: 6,
+    weight: 1,
+    category: "External Exposure",
+    check: () => {
+      const hasRegistryPost =
+        fileContains("server/index.js", "axios.post") &&
+        fileContains("server/index.js", "/checkpoints");
+      const hasRegistryUrl = fileContains(
+        "server/index.js",
+        "https://beta.pinokio.co",
+      );
+      const hasUserToken =
+        fileContains("server/index.js", "registryToken") ||
+        fileContains("server/index.js", "Bearer");
+      let detail = [];
+      if (hasRegistryUrl)
+        detail.push("Default registry: https://beta.pinokio.co");
+      if (hasRegistryPost)
+        detail.push(
+          "Checkpoint data (hash, config, system info) POSTed to registry",
+        );
+      if (hasUserToken)
+        detail.push("Uses Bearer token from user's registry account");
+      return {
+        fixed: !hasRegistryPost,
+        detail:
+          detail.length > 0
+            ? detail.join("; ")
+            : "No external registry communication",
+      };
+    },
+  },
+  {
+    id: 26,
+    name: "Fake user-agent on outbound requests",
+    severity: "LOW",
+    exploitability: 2,
+    impact: 3,
+    weight: 0.5,
+    category: "External Exposure",
+    check: () => {
+      const has =
+        fileContains("kernel/api/net/index.js", "fake-useragent") ||
+        fileContains("kernel/api/net/index.js", "fakeUa");
+      return {
+        fixed: !has,
+        detail: has
+          ? "kernel/api/net/index.js spoofs User-Agent on all outbound HTTP requests (misrepresents identity)"
+          : "No User-Agent spoofing",
+      };
+    },
+  },
 ];
 
 // ─── Run all checks ─────────────────────────────────────────────
