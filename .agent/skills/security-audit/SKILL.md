@@ -40,43 +40,51 @@ Each finding is scored on two dimensions (0–10 scale):
 
 ### Per-Finding Scorecard
 
-| #   | Finding                               | Exploitability | Impact | Risk Score | Status     | Fix Effort | Fix Ref                                                              |
-| --- | ------------------------------------- | :------------: | :----: | :--------: | ---------- | ---------- | -------------------------------------------------------------------- |
-| 1   | Hardcoded session secret `"secret"`   |       9        |   7    | **8.0** 🔴 | ❌ Unfixed | 5 min      | [FIX #1](./FIX.md#1-fix-session-secret--serverindexjs4446)           |
-| 2   | Hardcoded pipe secret `"oikonip"`     |       9        |   7    | **8.0** 🔴 | ❌ Unfixed | 5 min      | [FIX #2](./FIX.md#2-fix-pipe-session-secret--pipeindexjs34)          |
-| 3   | CORS `origin: '*'` (8 locations)      |       8        |   9    | **8.5** 🔴 | ❌ Unfixed | 30 min     | [FIX #3](./FIX.md#3-fix-cors-origin---multiple-files)                |
-| 4   | Unrestricted shell/PTY execution      |       6        |   10   | **8.0** 🔴 | ❌ Unfixed | Weeks      | [FIX #4](./FIX.md#4-harden-shell-command-execution--kernelshelljs)   |
-| 5   | `child_process.exec()` unsanitized    |       5        |   9    | **7.0** 🔴 | ❌ Unfixed | 2 hrs      | [FIX #5](./FIX.md#5-fix-child_processexec-usage--kernelutiljs)       |
-| 6   | No API endpoint authentication        |       8        |   9    | **8.5** 🔴 | ❌ Unfixed | 1 day      | [FIX #6](./FIX.md#6-add-api-authentication--serverindexjs)           |
-| 7   | No WebSocket authentication           |       8        |   8    | **8.0** 🟠 | ❌ Unfixed | 4 hrs      | [FIX #7](./FIX.md#7-add-websocket-authentication--serversocketjs)    |
-| 8   | Path traversal via `/asset`, `/files` |       7        |   7    | **7.0** 🟠 | ⚠️ Partial | 4 hrs      | [FIX #8](./FIX.md#8-harden-file-serving-routes--serverindexjs)       |
-| 9   | Sudo execution without confirmation   |       4        |   10   | **7.0** 🟠 | ❌ Unfixed | 2 hrs      | [FIX #9](./FIX.md#9-add-sudo-confirmation--kernelshelljs)            |
-| 10  | XSS via unescaped EJS `<%- %>`        |       5        |   6    | **5.5** 🟡 | ❌ Unfixed | 1 day      | [FIX #10](./FIX.md#10-fix-xss-in-ejs-templates--serverviewsejs)      |
-| 11  | No security headers (helmet/CSP)      |       3        |   5    | **4.0** 🟡 | ❌ Unfixed | 15 min     | [FIX #11](./FIX.md#11-add-security-headers--serverindexjs)           |
-| 12  | No rate limiting                      |       6        |   4    | **5.0** 🟡 | ❌ Unfixed | 15 min     | [FIX #12](./FIX.md#12-add-rate-limiting--serverindexjs-pipeindexjs)  |
-| 13  | Dynamic module loading risk           |       3        |   7    | **5.0** 🟡 | ❌ Unfixed | 2 hrs      | [FIX #13](./FIX.md#13-harden-dynamic-module-loading--kernelloaderjs) |
-| 14  | Verbose error messages                |       2        |   3    | **2.5** 🟢 | ❌ Unfixed | 1 hr       | [FIX #14](./FIX.md#14-fix-verbose-error-messages)                    |
-| 15  | Directory listing enabled             |       4        |   4    | **4.0** 🟢 | ❌ Unfixed | 15 min     | [FIX #15](./FIX.md#15-disable-directory-listing)                     |
-| 16  | ENVIRONMENT file exposure             |       5        |   6    | **5.5** 🟢 | ❌ Unfixed | 30 min     | [FIX #16](./FIX.md#16-block-environment-file-exposure)               |
-| 17  | Missing cookie security flags         |       3        |   4    | **3.5** 🔵 | ❌ Unfixed | 5 min      | [FIX #17](./FIX.md#17-add-cookie-security-flags)                     |
-| 18  | No input validation (joi/zod)         |       4        |   5    | **4.5** 🔵 | ❌ Unfixed | 1 day      | [FIX #18](./FIX.md#18-add-input-validation)                          |
-| 19  | Dependency audit needed               |       3        |   5    | **4.0** 🔵 | ❌ Unfixed | 30 min     | [FIX #19](./FIX.md#19-run-dependency-audit)                          |
-| 20  | No audit logging                      |       1        |   3    | **2.0** 🔵 | ❌ Unfixed | 1 day      | [FIX #20](./FIX.md#20-add-audit-logging)                             |
+| #                          | Finding                                   | Exploitability | Impact | Risk Score | Status     | Fix Effort | Fix Ref                                                              |
+| -------------------------- | ----------------------------------------- | :------------: | :----: | :--------: | ---------- | ---------- | -------------------------------------------------------------------- |
+| 1                          | Hardcoded session secret `"secret"`       |       9        |   7    | **8.0** 🔴 | ❌ Unfixed | 5 min      | [FIX #1](./FIX.md#1-fix-session-secret--serverindexjs4446)           |
+| 2                          | Hardcoded pipe secret `"oikonip"`         |       9        |   7    | **8.0** 🔴 | ❌ Unfixed | 5 min      | [FIX #2](./FIX.md#2-fix-pipe-session-secret--pipeindexjs34)          |
+| 3                          | CORS `origin: '*'` (8 locations)          |       8        |   9    | **8.5** 🔴 | ❌ Unfixed | 30 min     | [FIX #3](./FIX.md#3-fix-cors-origin---multiple-files)                |
+| 4                          | Unrestricted shell/PTY execution          |       6        |   10   | **8.0** 🔴 | ❌ Unfixed | Weeks      | [FIX #4](./FIX.md#4-harden-shell-command-execution--kernelshelljs)   |
+| 5                          | `child_process.exec()` unsanitized        |       5        |   9    | **7.0** 🔴 | ❌ Unfixed | 2 hrs      | [FIX #5](./FIX.md#5-fix-child_processexec-usage--kernelutiljs)       |
+| 6                          | No API endpoint authentication            |       8        |   9    | **8.5** 🔴 | ❌ Unfixed | 1 day      | [FIX #6](./FIX.md#6-add-api-authentication--serverindexjs)           |
+| 7                          | No WebSocket authentication               |       8        |   8    | **8.0** 🟠 | ❌ Unfixed | 4 hrs      | [FIX #7](./FIX.md#7-add-websocket-authentication--serversocketjs)    |
+| 8                          | Path traversal via `/asset`, `/files`     |       7        |   7    | **7.0** 🟠 | ⚠️ Partial | 4 hrs      | [FIX #8](./FIX.md#8-harden-file-serving-routes--serverindexjs)       |
+| 9                          | Sudo execution without confirmation       |       4        |   10   | **7.0** 🟠 | ❌ Unfixed | 2 hrs      | [FIX #9](./FIX.md#9-add-sudo-confirmation--kernelshelljs)            |
+| 10                         | XSS via unescaped EJS `<%- %>`            |       5        |   6    | **5.5** 🟡 | ❌ Unfixed | 1 day      | [FIX #10](./FIX.md#10-fix-xss-in-ejs-templates--serverviewsejs)      |
+| 11                         | No security headers (helmet/CSP)          |       3        |   5    | **4.0** 🟡 | ❌ Unfixed | 15 min     | [FIX #11](./FIX.md#11-add-security-headers--serverindexjs)           |
+| 12                         | No rate limiting                          |       6        |   4    | **5.0** 🟡 | ❌ Unfixed | 15 min     | [FIX #12](./FIX.md#12-add-rate-limiting--serverindexjs-pipeindexjs)  |
+| 13                         | Dynamic module loading risk               |       3        |   7    | **5.0** 🟡 | ❌ Unfixed | 2 hrs      | [FIX #13](./FIX.md#13-harden-dynamic-module-loading--kernelloaderjs) |
+| 14                         | Verbose error messages                    |       2        |   3    | **2.5** 🟢 | ❌ Unfixed | 1 hr       | [FIX #14](./FIX.md#14-fix-verbose-error-messages)                    |
+| 15                         | Directory listing enabled                 |       4        |   4    | **4.0** 🟢 | ❌ Unfixed | 15 min     | [FIX #15](./FIX.md#15-disable-directory-listing)                     |
+| 16                         | ENVIRONMENT file exposure                 |       5        |   6    | **5.5** 🟢 | ❌ Unfixed | 30 min     | [FIX #16](./FIX.md#16-block-environment-file-exposure)               |
+| 17                         | Missing cookie security flags             |       3        |   4    | **3.5** 🔵 | ❌ Unfixed | 5 min      | [FIX #17](./FIX.md#17-add-cookie-security-flags)                     |
+| 18                         | No input validation (joi/zod)             |       4        |   5    | **4.5** 🔵 | ❌ Unfixed | 1 day      | [FIX #18](./FIX.md#18-add-input-validation)                          |
+| 19                         | Dependency audit needed                   |       3        |   5    | **4.0** 🔵 | ❌ Unfixed | 30 min     | [FIX #19](./FIX.md#19-run-dependency-audit)                          |
+| 20                         | No audit logging                          |       1        |   3    | **2.0** 🔵 | ❌ Unfixed | 1 day      | [FIX #20](./FIX.md#20-add-audit-logging)                             |
+| **EXTERNAL DATA EXPOSURE** |                                           |                |        |            |            |            |                                                                      |
+| 21                         | **Open HTTP proxy** (net.request SSRF)    |       9        |   9    | **9.0** 🔴 | ❌ Unfixed | 2 hrs      | [FIX #21](./FIX.md#21-fix-open-http-proxy)                           |
+| 22                         | Cloudflare tunnel exposes local server    |       5        |   9    | **7.0** 🟠 | ⚠️ Partial | 4 hrs      | [FIX #22](./FIX.md#22-harden-cloudflare-tunnel)                      |
+| 23                         | Twitter/X API stored tokens (plaintext)   |       4        |   7    | **5.5** 🟡 | ❌ Unfixed | 2 hrs      | [FIX #23](./FIX.md#23-encrypt-twitter-tokens)                        |
+| 24                         | LAN peer discovery broadcasts system info |       4        |   6    | **5.0** 🟡 | ❌ Unfixed | 4 hrs      | [FIX #24](./FIX.md#24-restrict-peer-discovery)                       |
+| 25                         | Checkpoint data sent to external registry |       3        |   6    | **4.5** 🟡 | ❌ Unfixed | 2 hrs      | [FIX #25](./FIX.md#25-control-registry-communication)                |
+| 26                         | Fake user-agent on outbound requests      |       2        |   3    | **2.5** 🟢 | ❌ Unfixed | 15 min     | [FIX #26](./FIX.md#26-remove-fake-useragent)                         |
 
 ---
 
 ### Score Breakdown by Category
 
-| Category                 |             Findings              | Avg Risk |       Weight        |  Deduction   |
-| ------------------------ | :-------------------------------: | :------: | :-----------------: | :----------: |
-| **Secrets & Crypto**     |              #1, #2               |   8.0    |         ×3          |     -24      |
-| **Access Control**       |            #3, #6, #7             |   8.3    |         ×3          |     -25      |
-| **Injection**            |            #4, #5, #10            |   6.8    |         ×2          |     -14      |
-| **Data Exposure**        |           #8, #15, #16            |   5.5    |         ×1          |      -6      |
-| **Privilege Escalation** |                #9                 |   7.0    |         ×2          |      -7      |
-| **Hardening**            | #11, #12, #13, #17, #18, #19, #20 |   4.1    |        ×0.5         |      -2      |
-|                          |                                   |          | **Total Deduction** |   **-78**    |
-|                          |                                   |          |  **Safety Score**   | **22 / 100** |
+| Category                 |                Findings                | Avg Risk |       Weight        |  Deduction   |
+| ------------------------ | :------------------------------------: | :------: | :-----------------: | :----------: |
+| **Secrets & Crypto**     |                 #1, #2                 |   8.0    |         ×3          |     -24      |
+| **Access Control**       |               #3, #6, #7               |   8.3    |         ×3          |     -25      |
+| **Injection**            |              #4, #5, #10               |   6.8    |         ×2          |     -14      |
+| **Data Exposure**        |              #8, #15, #16              |   5.5    |         ×1          |      -6      |
+| **Privilege Escalation** |                   #9                   |   7.0    |         ×2          |      -7      |
+| **External Exposure**    |      #21, #22, #23, #24, #25, #26      |   5.6    |        ×1.5         |     -10      |
+| **Hardening**            | #11, #12, #13, #14, #17, #18, #19, #20 |   4.1    |        ×0.5         |      -2      |
+|                          |                                        |          | **Total Deduction** |   **-88**    |
+|                          |                                        |          |  **Safety Score**   | **12 / 100** |
 
 ---
 
