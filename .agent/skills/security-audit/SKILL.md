@@ -9,7 +9,115 @@ This skill documents all known security concerns, attack surfaces, and remediati
 
 ---
 
-## 🔴 CRITICAL — Hardcoded Secrets
+## � Security Score Dashboard
+
+### Overall Safety Grade: `22 / 100` — Grade: **F** 🔴
+
+> **The codebase is NOT safe for production or public-facing deployment in its current state.**
+> It is designed as a local-only desktop app backend and assumes a trusted localhost environment. Any network exposure (LAN, tunnel, port-forward) significantly increases risk.
+
+### Scoring Methodology
+
+Each finding is scored on two dimensions (0–10 scale):
+
+- **Exploitability (E)** — How easy is it to exploit? (10 = trivially exploitable, no auth needed)
+- **Impact (I)** — What's the damage if exploited? (10 = full system compromise)
+
+**Risk Score** = `(E + I) / 2` → normalized to 0–10
+
+**Overall Safety Score** = `100 - (sum of weighted risk scores)` → clamped to 0–100
+
+| Grade  | Score Range | Meaning                             |
+| ------ | ----------- | ----------------------------------- |
+| **A+** | 95–100      | Production-ready, hardened          |
+| **A**  | 85–94       | Strong security posture             |
+| **B**  | 70–84       | Acceptable with known risks         |
+| **C**  | 50–69       | Needs improvement before deployment |
+| **D**  | 30–49       | Significant vulnerabilities         |
+| **F**  | 0–29        | Unsafe — do not deploy publicly     |
+
+### Per-Finding Scorecard
+
+| #   | Finding                               | Exploitability | Impact | Risk Score | Status     | Fix Effort |
+| --- | ------------------------------------- | :------------: | :----: | :--------: | ---------- | ---------- |
+| 1   | Hardcoded session secret `"secret"`   |       9        |   7    | **8.0** 🔴 | ❌ Unfixed | 5 min      |
+| 2   | Hardcoded pipe secret `"oikonip"`     |       9        |   7    | **8.0** 🔴 | ❌ Unfixed | 5 min      |
+| 3   | CORS `origin: '*'` (8 locations)      |       8        |   9    | **8.5** 🔴 | ❌ Unfixed | 30 min     |
+| 4   | Unrestricted shell/PTY execution      |       6        |   10   | **8.0** 🔴 | ❌ Unfixed | Weeks      |
+| 5   | `child_process.exec()` unsanitized    |       5        |   9    | **7.0** 🔴 | ❌ Unfixed | 2 hrs      |
+| 6   | No API endpoint authentication        |       8        |   9    | **8.5** 🔴 | ❌ Unfixed | 1 day      |
+| 7   | No WebSocket authentication           |       8        |   8    | **8.0** 🟠 | ❌ Unfixed | 4 hrs      |
+| 8   | Path traversal via `/asset`, `/files` |       7        |   7    | **7.0** 🟠 | ⚠️ Partial | 4 hrs      |
+| 9   | Sudo execution without confirmation   |       4        |   10   | **7.0** 🟠 | ❌ Unfixed | 2 hrs      |
+| 10  | XSS via unescaped EJS `<%- %>`        |       5        |   6    | **5.5** 🟡 | ❌ Unfixed | 1 day      |
+| 11  | No security headers (helmet/CSP)      |       3        |   5    | **4.0** 🟡 | ❌ Unfixed | 15 min     |
+| 12  | No rate limiting                      |       6        |   4    | **5.0** 🟡 | ❌ Unfixed | 15 min     |
+| 13  | Dynamic module loading risk           |       3        |   7    | **5.0** 🟡 | ❌ Unfixed | 2 hrs      |
+| 14  | Verbose error messages                |       2        |   3    | **2.5** 🟢 | ❌ Unfixed | 1 hr       |
+| 15  | Directory listing enabled             |       4        |   4    | **4.0** 🟢 | ❌ Unfixed | 15 min     |
+| 16  | ENVIRONMENT file exposure             |       5        |   6    | **5.5** 🟢 | ❌ Unfixed | 30 min     |
+| 17  | Missing cookie security flags         |       3        |   4    | **3.5** 🔵 | ❌ Unfixed | 5 min      |
+| 18  | No input validation (joi/zod)         |       4        |   5    | **4.5** 🔵 | ❌ Unfixed | 1 day      |
+| 19  | Dependency audit needed               |       3        |   5    | **4.0** 🔵 | ❌ Unfixed | 30 min     |
+| 20  | No audit logging                      |       1        |   3    | **2.0** 🔵 | ❌ Unfixed | 1 day      |
+
+### Score Breakdown by Category
+
+| Category                 |             Findings              | Avg Risk |       Weight        |  Deduction   |
+| ------------------------ | :-------------------------------: | :------: | :-----------------: | :----------: |
+| **Secrets & Crypto**     |              #1, #2               |   8.0    |         ×3          |     -24      |
+| **Access Control**       |            #3, #6, #7             |   8.3    |         ×3          |     -25      |
+| **Injection**            |            #4, #5, #10            |   6.8    |         ×2          |     -14      |
+| **Data Exposure**        |           #8, #15, #16            |   5.5    |         ×1          |      -6      |
+| **Privilege Escalation** |                #9                 |   7.0    |         ×2          |      -7      |
+| **Hardening**            | #11, #12, #13, #17, #18, #19, #20 |   4.1    |        ×0.5         |      -2      |
+|                          |                                   |          | **Total Deduction** |   **-78**    |
+|                          |                                   |          |  **Safety Score**   | **22 / 100** |
+
+### Quick-Win Fixes (Raise Score to ~55 in < 2 hours)
+
+Fixing just these 5 items would raise the safety score from **22** to approximately **55** (Grade D → C):
+
+| Priority | Fix                                                           | Score Gain |  Time  |
+| :------: | ------------------------------------------------------------- | :--------: | :----: |
+|    ①     | Replace hardcoded session secrets with `crypto.randomBytes()` |    +12     | 5 min  |
+|    ②     | Restrict CORS to `localhost` origins only                     |    +13     | 30 min |
+|    ③     | Add `helmet` security headers                                 |     +2     | 15 min |
+|    ④     | Add `express-rate-limit` to API + login routes                |     +3     | 15 min |
+|    ⑤     | Add cookie security flags (`httpOnly`, `sameSite`)            |     +2     | 5 min  |
+
+### Full Hardening (Raise Score to ~85, Grade B → A)
+
+| Priority | Fix                                          | Score Gain |  Time  |
+| :------: | -------------------------------------------- | :--------: | :----: |
+|    ⑥     | Add API token authentication middleware      |    +13     | 1 day  |
+|    ⑦     | Add WebSocket connection authentication      |     +8     | 4 hrs  |
+|    ⑧     | Block ENVIRONMENT/`.git` from file serving   |     +6     | 30 min |
+|    ⑨     | Replace `child_process.exec` with `execFile` |     +4     | 2 hrs  |
+|    ⑩     | Add sudo operation allowlist + logging       |     +4     | 2 hrs  |
+
+---
+
+### How to Update Scores
+
+When you fix a finding, update its row in the scorecard:
+
+1. Change **Status** from `❌ Unfixed` to `✅ Fixed`
+2. Set its **Risk Score** to `0.0` (or a reduced value if partially fixed)
+3. Recalculate the **Overall Safety Score** by subtracting the improvement
+4. Update the **Grade** accordingly
+
+Example after fixing findings #1, #2, #3:
+
+```
+Old score: 22/100 (Grade F)
+Removed:   8.0×3 + 8.0×3 + 8.5×3 = 73.5 → weighted ≈ -25 deduction removed
+New score: ~47/100 (Grade D)
+```
+
+---
+
+## �🔴 CRITICAL — Hardcoded Secrets
 
 ### 1. Session Secret — `server/index.js:4446`
 
