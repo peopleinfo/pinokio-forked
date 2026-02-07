@@ -21,7 +21,7 @@ fi
 # Install deps if needed
 if [ ! -d "node_modules" ]; then
   echo "📦 Installing dependencies..."
-  npm install
+  pnpm install
   echo ""
 fi
 

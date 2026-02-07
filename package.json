@@ -7,7 +7,8 @@
     "download_readme": "wget -O kernel/proto/PINOKIO.md https://raw.githubusercontent.com/pinokiocomputer/home/refs/heads/main/docs/README.md",
     "start": "node script/index",
     "check-update": "node scripts/check-update.js",
-    "sync": "node scripts/sync.js"
+    "sync": "node scripts/sync.js",
+    "security-scan": "node scripts/security-scan.js"
   },
   "author": "",
   "license": "MIT",
