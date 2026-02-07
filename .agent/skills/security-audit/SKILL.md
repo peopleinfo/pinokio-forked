@@ -3,13 +3,13 @@ name: security-audit
 description: Security audit checklist and known vulnerabilities for the pinokiod codebase. Covers hardcoded secrets, CORS, session management, command injection, path traversal, WebSocket security, and more.
 ---
 
-# Security Audit Skill — Pinokiod
+# Security Audit — Scan Report
 
-This skill documents all known security concerns, attack surfaces, and remediation guidance for the pinokiod codebase. Use this as a checklist before any deployment or when reviewing pull requests.
+This document is the **scan** side of the security audit. It identifies vulnerabilities, scores their risk, and tracks fix status. For remediation code and fix instructions, see [`FIX.md`](./FIX.md).
 
 ---
 
-## � Security Score Dashboard
+## 📊 Security Score Dashboard
 
 ### Overall Safety Grade: `22 / 100` — Grade: **F** 🔴
 
@@ -36,30 +36,34 @@ Each finding is scored on two dimensions (0–10 scale):
 | **D**  | 30–49       | Significant vulnerabilities         |
 | **F**  | 0–29        | Unsafe — do not deploy publicly     |
 
+---
+
 ### Per-Finding Scorecard
 
-| #   | Finding                               | Exploitability | Impact | Risk Score | Status     | Fix Effort |
-| --- | ------------------------------------- | :------------: | :----: | :--------: | ---------- | ---------- |
-| 1   | Hardcoded session secret `"secret"`   |       9        |   7    | **8.0** 🔴 | ❌ Unfixed | 5 min      |
-| 2   | Hardcoded pipe secret `"oikonip"`     |       9        |   7    | **8.0** 🔴 | ❌ Unfixed | 5 min      |
-| 3   | CORS `origin: '*'` (8 locations)      |       8        |   9    | **8.5** 🔴 | ❌ Unfixed | 30 min     |
-| 4   | Unrestricted shell/PTY execution      |       6        |   10   | **8.0** 🔴 | ❌ Unfixed | Weeks      |
-| 5   | `child_process.exec()` unsanitized    |       5        |   9    | **7.0** 🔴 | ❌ Unfixed | 2 hrs      |
-| 6   | No API endpoint authentication        |       8        |   9    | **8.5** 🔴 | ❌ Unfixed | 1 day      |
-| 7   | No WebSocket authentication           |       8        |   8    | **8.0** 🟠 | ❌ Unfixed | 4 hrs      |
-| 8   | Path traversal via `/asset`, `/files` |       7        |   7    | **7.0** 🟠 | ⚠️ Partial | 4 hrs      |
-| 9   | Sudo execution without confirmation   |       4        |   10   | **7.0** 🟠 | ❌ Unfixed | 2 hrs      |
-| 10  | XSS via unescaped EJS `<%- %>`        |       5        |   6    | **5.5** 🟡 | ❌ Unfixed | 1 day      |
-| 11  | No security headers (helmet/CSP)      |       3        |   5    | **4.0** 🟡 | ❌ Unfixed | 15 min     |
-| 12  | No rate limiting                      |       6        |   4    | **5.0** 🟡 | ❌ Unfixed | 15 min     |
-| 13  | Dynamic module loading risk           |       3        |   7    | **5.0** 🟡 | ❌ Unfixed | 2 hrs      |
-| 14  | Verbose error messages                |       2        |   3    | **2.5** 🟢 | ❌ Unfixed | 1 hr       |
-| 15  | Directory listing enabled             |       4        |   4    | **4.0** 🟢 | ❌ Unfixed | 15 min     |
-| 16  | ENVIRONMENT file exposure             |       5        |   6    | **5.5** 🟢 | ❌ Unfixed | 30 min     |
-| 17  | Missing cookie security flags         |       3        |   4    | **3.5** 🔵 | ❌ Unfixed | 5 min      |
-| 18  | No input validation (joi/zod)         |       4        |   5    | **4.5** 🔵 | ❌ Unfixed | 1 day      |
-| 19  | Dependency audit needed               |       3        |   5    | **4.0** 🔵 | ❌ Unfixed | 30 min     |
-| 20  | No audit logging                      |       1        |   3    | **2.0** 🔵 | ❌ Unfixed | 1 day      |
+| #   | Finding                               | Exploitability | Impact | Risk Score | Status     | Fix Effort | Fix Ref                                                              |
+| --- | ------------------------------------- | :------------: | :----: | :--------: | ---------- | ---------- | -------------------------------------------------------------------- |
+| 1   | Hardcoded session secret `"secret"`   |       9        |   7    | **8.0** 🔴 | ❌ Unfixed | 5 min      | [FIX #1](./FIX.md#1-fix-session-secret--serverindexjs4446)           |
+| 2   | Hardcoded pipe secret `"oikonip"`     |       9        |   7    | **8.0** 🔴 | ❌ Unfixed | 5 min      | [FIX #2](./FIX.md#2-fix-pipe-session-secret--pipeindexjs34)          |
+| 3   | CORS `origin: '*'` (8 locations)      |       8        |   9    | **8.5** 🔴 | ❌ Unfixed | 30 min     | [FIX #3](./FIX.md#3-fix-cors-origin---multiple-files)                |
+| 4   | Unrestricted shell/PTY execution      |       6        |   10   | **8.0** 🔴 | ❌ Unfixed | Weeks      | [FIX #4](./FIX.md#4-harden-shell-command-execution--kernelshelljs)   |
+| 5   | `child_process.exec()` unsanitized    |       5        |   9    | **7.0** 🔴 | ❌ Unfixed | 2 hrs      | [FIX #5](./FIX.md#5-fix-child_processexec-usage--kernelutiljs)       |
+| 6   | No API endpoint authentication        |       8        |   9    | **8.5** 🔴 | ❌ Unfixed | 1 day      | [FIX #6](./FIX.md#6-add-api-authentication--serverindexjs)           |
+| 7   | No WebSocket authentication           |       8        |   8    | **8.0** 🟠 | ❌ Unfixed | 4 hrs      | [FIX #7](./FIX.md#7-add-websocket-authentication--serversocketjs)    |
+| 8   | Path traversal via `/asset`, `/files` |       7        |   7    | **7.0** 🟠 | ⚠️ Partial | 4 hrs      | [FIX #8](./FIX.md#8-harden-file-serving-routes--serverindexjs)       |
+| 9   | Sudo execution without confirmation   |       4        |   10   | **7.0** 🟠 | ❌ Unfixed | 2 hrs      | [FIX #9](./FIX.md#9-add-sudo-confirmation--kernelshelljs)            |
+| 10  | XSS via unescaped EJS `<%- %>`        |       5        |   6    | **5.5** 🟡 | ❌ Unfixed | 1 day      | [FIX #10](./FIX.md#10-fix-xss-in-ejs-templates--serverviewsejs)      |
+| 11  | No security headers (helmet/CSP)      |       3        |   5    | **4.0** 🟡 | ❌ Unfixed | 15 min     | [FIX #11](./FIX.md#11-add-security-headers--serverindexjs)           |
+| 12  | No rate limiting                      |       6        |   4    | **5.0** 🟡 | ❌ Unfixed | 15 min     | [FIX #12](./FIX.md#12-add-rate-limiting--serverindexjs-pipeindexjs)  |
+| 13  | Dynamic module loading risk           |       3        |   7    | **5.0** 🟡 | ❌ Unfixed | 2 hrs      | [FIX #13](./FIX.md#13-harden-dynamic-module-loading--kernelloaderjs) |
+| 14  | Verbose error messages                |       2        |   3    | **2.5** 🟢 | ❌ Unfixed | 1 hr       | [FIX #14](./FIX.md#14-fix-verbose-error-messages)                    |
+| 15  | Directory listing enabled             |       4        |   4    | **4.0** 🟢 | ❌ Unfixed | 15 min     | [FIX #15](./FIX.md#15-disable-directory-listing)                     |
+| 16  | ENVIRONMENT file exposure             |       5        |   6    | **5.5** 🟢 | ❌ Unfixed | 30 min     | [FIX #16](./FIX.md#16-block-environment-file-exposure)               |
+| 17  | Missing cookie security flags         |       3        |   4    | **3.5** 🔵 | ❌ Unfixed | 5 min      | [FIX #17](./FIX.md#17-add-cookie-security-flags)                     |
+| 18  | No input validation (joi/zod)         |       4        |   5    | **4.5** 🔵 | ❌ Unfixed | 1 day      | [FIX #18](./FIX.md#18-add-input-validation)                          |
+| 19  | Dependency audit needed               |       3        |   5    | **4.0** 🔵 | ❌ Unfixed | 30 min     | [FIX #19](./FIX.md#19-run-dependency-audit)                          |
+| 20  | No audit logging                      |       1        |   3    | **2.0** 🔵 | ❌ Unfixed | 1 day      | [FIX #20](./FIX.md#20-add-audit-logging)                             |
+
+---
 
 ### Score Breakdown by Category
 
@@ -74,551 +78,207 @@ Each finding is scored on two dimensions (0–10 scale):
 |                          |                                   |          | **Total Deduction** |   **-78**    |
 |                          |                                   |          |  **Safety Score**   | **22 / 100** |
 
+---
+
 ### Quick-Win Fixes (Raise Score to ~55 in < 2 hours)
 
-Fixing just these 5 items would raise the safety score from **22** to approximately **55** (Grade D → C):
+| Priority | Fix                                                                                                                                                         | Score Gain |  Time  |
+| :------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------: | :----: |
+|    ①     | Replace hardcoded session secrets → [FIX #1](./FIX.md#1-fix-session-secret--serverindexjs4446), [FIX #2](./FIX.md#2-fix-pipe-session-secret--pipeindexjs34) |    +12     | 5 min  |
+|    ②     | Restrict CORS to localhost origins → [FIX #3](./FIX.md#3-fix-cors-origin---multiple-files)                                                                  |    +13     | 30 min |
+|    ③     | Add helmet security headers → [FIX #11](./FIX.md#11-add-security-headers--serverindexjs)                                                                    |     +2     | 15 min |
+|    ④     | Add rate limiting → [FIX #12](./FIX.md#12-add-rate-limiting--serverindexjs-pipeindexjs)                                                                     |     +3     | 15 min |
+|    ⑤     | Add cookie security flags → [FIX #17](./FIX.md#17-add-cookie-security-flags)                                                                                |     +2     | 5 min  |
 
-| Priority | Fix                                                           | Score Gain |  Time  |
-| :------: | ------------------------------------------------------------- | :--------: | :----: |
-|    ①     | Replace hardcoded session secrets with `crypto.randomBytes()` |    +12     | 5 min  |
-|    ②     | Restrict CORS to `localhost` origins only                     |    +13     | 30 min |
-|    ③     | Add `helmet` security headers                                 |     +2     | 15 min |
-|    ④     | Add `express-rate-limit` to API + login routes                |     +3     | 15 min |
-|    ⑤     | Add cookie security flags (`httpOnly`, `sameSite`)            |     +2     | 5 min  |
+### Full Hardening (Raise Score to ~85, Grade A)
 
-### Full Hardening (Raise Score to ~85, Grade B → A)
-
-| Priority | Fix                                          | Score Gain |  Time  |
-| :------: | -------------------------------------------- | :--------: | :----: |
-|    ⑥     | Add API token authentication middleware      |    +13     | 1 day  |
-|    ⑦     | Add WebSocket connection authentication      |     +8     | 4 hrs  |
-|    ⑧     | Block ENVIRONMENT/`.git` from file serving   |     +6     | 30 min |
-|    ⑨     | Replace `child_process.exec` with `execFile` |     +4     | 2 hrs  |
-|    ⑩     | Add sudo operation allowlist + logging       |     +4     | 2 hrs  |
+| Priority | Fix                                                                                                                                            | Score Gain |  Time  |
+| :------: | ---------------------------------------------------------------------------------------------------------------------------------------------- | :--------: | :----: |
+|    ⑥     | Add API token auth → [FIX #6](./FIX.md#6-add-api-authentication--serverindexjs)                                                                |    +13     | 1 day  |
+|    ⑦     | Add WebSocket auth → [FIX #7](./FIX.md#7-add-websocket-authentication--serversocketjs)                                                         |     +8     | 4 hrs  |
+|    ⑧     | Block sensitive files → [FIX #8](./FIX.md#8-harden-file-serving-routes--serverindexjs), [FIX #16](./FIX.md#16-block-environment-file-exposure) |     +6     | 30 min |
+|    ⑨     | Replace `exec` with `execFile` → [FIX #5](./FIX.md#5-fix-child_processexec-usage--kernelutiljs)                                                |     +4     | 2 hrs  |
+|    ⑩     | Add sudo allowlist → [FIX #9](./FIX.md#9-add-sudo-confirmation--kernelshelljs)                                                                 |     +4     | 2 hrs  |
 
 ---
 
 ### How to Update Scores
 
-When you fix a finding, update its row in the scorecard:
+When you fix a finding, update its row in the scorecard above:
 
 1. Change **Status** from `❌ Unfixed` to `✅ Fixed`
 2. Set its **Risk Score** to `0.0` (or a reduced value if partially fixed)
 3. Recalculate the **Overall Safety Score** by subtracting the improvement
 4. Update the **Grade** accordingly
 
-Example after fixing findings #1, #2, #3:
+---
 
-```
-Old score: 22/100 (Grade F)
-Removed:   8.0×3 + 8.0×3 + 8.5×3 = 73.5 → weighted ≈ -25 deduction removed
-New score: ~47/100 (Grade D)
-```
+## 🔴 CRITICAL Findings
+
+### Finding #1 — Hardcoded Session Secret
+
+- **File:** `server/index.js` (line ~4446)
+- **Code:** `session({ secret: "secret" })`
+- **Risk:** Session cookies can be forged by anyone who knows the secret (which is literally `"secret"`). Enables session hijacking and replay attacks.
+- **Exploitability:** 9 — Secret is publicly visible in source code
+- **Impact:** 7 — Complete session impersonation
+
+### Finding #2 — Hardcoded Pipe Secret
+
+- **File:** `pipe/index.js` (line ~34)
+- **Code:** `session({ secret: 'oikonip' })`
+- **Risk:** The pipe proxy (used for sharing apps via Cloudflare/LAN) uses `"oikonip"` (reversed `"pinokio"`). Trivially guessable.
+- **Exploitability:** 9 — Secret is publicly visible and guessable
+- **Impact:** 7 — Complete session impersonation on shared apps
+
+### Finding #3 — Wide-Open CORS (`origin: '*'`)
+
+- **Files (8 locations):**
+
+| File                                     | Line   | Context           |
+| ---------------------------------------- | ------ | ----------------- |
+| `server/index.js`                        | 4376   | Main Express app  |
+| `pipe/index.js`                          | 28     | Pipe proxy        |
+| `server/socket.js`                       | 277    | WebSocket upgrade |
+| `kernel/router/common.js`                | 25     | Router proxy      |
+| `kernel/router/connector.js`             | 32, 76 | Connector proxy   |
+| `kernel/router/localhost_home_router.js` | 36, 69 | Localhost routing |
+| `kernel/router/pinokio_domain_router.js` | 61     | Pinokio domain    |
+| `kernel/router/rewriter.js`              | 26     | URL rewriting     |
+
+- **Risk:** Any website can make requests to `localhost:42000`. A malicious site could install apps, execute shell commands, read files, and exfiltrate data.
+- **Exploitability:** 8 — Just needs user to visit a malicious webpage
+- **Impact:** 9 — Full system access via API
+
+### Finding #4 — Unrestricted Shell/PTY Execution
+
+- **File:** `kernel/shell.js` — `exec()`, `emit2()`, `request()`
+- **Code:** PTY spawns with `pty.spawn()` and accepts arbitrary commands via `ptyProcess.write(message)`
+- **Risk:** No sandboxing, no allowlist, no confirmation. Scripts from `git clone` can run any command with user's full privileges.
+- **Attack vectors:** Malicious Pinokio scripts, WebSocket `emit` messages, `sudo` escalation
+- **Exploitability:** 6 — Requires installing a malicious script or network access
+- **Impact:** 10 — Full system compromise, arbitrary code execution
+
+### Finding #5 — Unsanitized `child_process.exec()`
+
+- **File:** `kernel/util.js` (lines 415, 432, 462, 479, 502, 539)
+- **Code:** `child_process.exec(command)` — 6 occurrences
+- **Risk:** `exec()` spawns a shell, allowing injection if `command` contains user-controlled paths/filenames.
+- **Exploitability:** 5 — Requires crafted filenames/paths
+- **Impact:** 9 — Arbitrary command execution
 
 ---
 
-## �🔴 CRITICAL — Hardcoded Secrets
+## 🟠 HIGH Findings
 
-### 1. Session Secret — `server/index.js:4446`
+### Finding #6 — No API Endpoint Authentication
 
-```javascript
-this.app.use(
-  session({
-    secret: "secret", // ⚠️ HARDCODED
-    resave: false,
-    saveUninitialized: false,
-  }),
-);
-```
+- **File:** `server/index.js` — ALL routes
+- **Risk:** Zero authentication on any route. Anyone who can reach port 42000 has full access.
+- **Exposed endpoints:** `GET /tools`, `POST /pinokio/api`, `GET /asset/*`, `GET /files/*`, WebSocket
+- **Exploitability:** 8 — Just need network access to the port
+- **Impact:** 9 — Execute commands, browse files, install/uninstall apps
 
-**Risk:** Session cookies can be forged by anyone who knows the secret (which is literally `"secret"`). This allows session hijacking and replay attacks.
+### Finding #7 — No WebSocket Authentication
 
-**Remediation:**
+- **File:** `server/socket.js`
+- **Code:** `wss.on('connection', (ws, req) => { /* no auth */ })`
+- **Risk:** Any WebSocket client can watch terminal output (secrets, API keys), type into shells, trigger scripts.
+- **Exploitability:** 8 — Connect to `ws://localhost:42000` from any origin
+- **Impact:** 8 — Shell hijacking, secret exfiltration
 
-```javascript
-const crypto = require("crypto");
-const SESSION_SECRET =
-  process.env.PINOKIO_SESSION_SECRET || crypto.randomBytes(32).toString("hex");
-this.app.use(
-  session({
-    secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.PINOKIO_HTTPS_ACTIVE === "1",
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    },
-  }),
-);
-```
+### Finding #8 — Path Traversal via File Serving
 
-**Files:** `server/index.js` (line ~4446)
+- **File:** `server/index.js` (lines ~4409-4436)
+- **Code:** `express.static(this.kernel.homedir)` served on `/asset` and `/files`
+- **Risk:** Entire Pinokio home directory is browsable (ENVIRONMENT files, .git dirs, caches)
+- **Partial mitigation:** `sanitizeSegments()` in `server/routes/files.js` strips `..` — but `/asset` route bypasses this
+- **Exploitability:** 7 — Direct URL access
+- **Impact:** 7 — API keys, tokens, model files exposed
+
+### Finding #9 — Sudo Execution Without Confirmation
+
+- **Files:** `kernel/shell.js:365-385`, `kernel/bin/vs.js`, `kernel/bin/brew.js`, `kernel/bin/registry.js`
+- **Code:** `sudo.exec(params.message, options, callback)`
+- **Risk:** Scripts can silently request admin/root. If UAC is auto-approved, arbitrary code runs elevated.
+- **Use cases:** VS Build Tools install, Xcode CLT removal (`rm -rf /Library/Developer/CommandLineTools`), Windows registry mods
+- **Exploitability:** 4 — Requires UAC/sudo prompt (usually)
+- **Impact:** 10 — Full admin/root access
 
 ---
 
-### 2. Pipe Session Secret — `pipe/index.js:34`
+## 🟡 MEDIUM Findings
 
-```javascript
-app.use(
-  session({
-    secret: "oikonip", // ⚠️ HARDCODED (reversed "pinokio")
-    resave: false,
-    saveUninitialized: false,
-  }),
-);
-```
+### Finding #10 — XSS via Unescaped EJS Templates
 
-**Risk:** The pipe proxy server uses a trivially guessable secret (`"oikonip"` is just `"pinokio"` reversed). Any shared app exposed via Cloudflare tunnel or LAN is vulnerable.
+- **Files:** `server/views/*.ejs` — 40+ occurrences of `<%- %>` (raw output)
+- **Concerning patterns:**
+  - `<%- dataJson %>` in `registry_checkin.ejs`
+  - `<%- bookmarkletHref %>` in `bookmarklet.ejs`
+  - `<%- JSON.stringify(name) %>` in multiple templates (can break `</script>` tags)
+- **Risk:** If variables contain user-controlled content (app names, git messages, filenames), XSS is possible.
+- **Exploitability:** 5 — Requires crafted app metadata
+- **Impact:** 6 — Cookie theft, session hijacking, UI manipulation
 
-**Remediation:** Same as above — use environment variable or crypto-random secret.
+### Finding #11 — No Security Headers
 
-**Files:** `pipe/index.js` (line ~34)
+- **File:** `server/index.js` — no `helmet`, no CSP, no `X-Frame-Options`
+- **Missing:** Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, HSTS
+- **Exploitability:** 3 — Enables other attacks (clickjacking, MIME sniffing)
+- **Impact:** 5 — Defense-in-depth gap
 
----
+### Finding #12 — No Rate Limiting
 
-## 🔴 CRITICAL — Wide-Open CORS
+- **Files:** `server/index.js`, `pipe/index.js`, `server/socket.js`
+- **Risk:** Brute-force passcodes, DoS via rapid API calls, resource exhaustion via uploads.
+- **Exploitability:** 6 — Automated tools
+- **Impact:** 4 — Service disruption, credential guessing
 
-### 3. Global CORS `origin: '*'` — Multiple Files
+### Finding #13 — Dynamic Module Loading
 
-Every server endpoint accepts requests from **any origin**:
-
-| File                                     | Line   | Context                                             |
-| ---------------------------------------- | ------ | --------------------------------------------------- |
-| `server/index.js`                        | 4376   | Main Express app: `cors({ origin: '*' })`           |
-| `pipe/index.js`                          | 28     | Pipe proxy: `cors({ origin: '*' })`                 |
-| `server/socket.js`                       | 277    | WebSocket upgrade: `Access-Control-Allow-Origin: *` |
-| `kernel/router/common.js`                | 25     | Router proxy responses                              |
-| `kernel/router/connector.js`             | 32, 76 | Connector proxy responses                           |
-| `kernel/router/localhost_home_router.js` | 36, 69 | Localhost routing                                   |
-| `kernel/router/pinokio_domain_router.js` | 61     | Pinokio domain routing                              |
-| `kernel/router/rewriter.js`              | 26     | URL rewriting proxy                                 |
-
-**Risk:** Any website visited in a browser can make authenticated requests to the local Pinokio server at `localhost:42000`. This means:
-
-- A malicious website could trigger AI app installations
-- Read/modify files on the host system via the FS API
-- Execute arbitrary shell commands via the shell API
-- Exfiltrate data from the user's machine
-
-**Remediation:**
-
-```javascript
-const ALLOWED_ORIGINS = [
-  "http://localhost:42000",
-  "https://pinokio.localhost",
-  /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
-  /^https?:\/\/localhost(:\d+)?$/,
-];
-
-this.app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // same-origin requests
-      const allowed = ALLOWED_ORIGINS.some((o) =>
-        o instanceof RegExp ? o.test(origin) : o === origin,
-      );
-      callback(null, allowed);
-    },
-    credentials: true,
-  }),
-);
-```
-
-**Files:** All files listed above.
+- **File:** `kernel/loader.js`
+- **Code:** `const clearModule = require('clear-module')` — clears and re-requires modules
+- **Risk:** If module paths derive from user input, arbitrary JS execution is possible.
+- **Exploitability:** 3 — Requires control over module paths
+- **Impact:** 7 — Arbitrary code execution
 
 ---
 
-## 🔴 CRITICAL — Command Injection Surface
+## 🟢 LOW Findings
 
-### 4. Shell Command Execution — `kernel/shell.js`
+### Finding #14 — Verbose Error Messages
 
-The shell system accepts commands from scripts and WebSocket messages and executes them directly via PTY:
+- **Files:** Multiple — `console.log("ERROR", e)`, `res.status(404).send(e.message)`
+- **Risk:** Exposes internal paths and stack traces to clients.
 
-```javascript
-// kernel/shell.js - exec() method spawns PTY and writes commands directly
-this.ptyProcess = pty.spawn(this.shell, this.args, config);
-// ... later:
-this.ptyProcess.write(message); // message comes from user/script input
-```
+### Finding #15 — Directory Listing Enabled
 
-**Risk:** Any command passed to `shell.run` is executed with the full privileges of the Node.js process. There is no sandboxing, no command allowlisting, and no user confirmation for dangerous operations.
+- **File:** `server/index.js` — `serveIndex` middleware on `/asset` and `/files`
+- **Risk:** Full directory browsing of Pinokio home.
 
-**Attack vectors:**
+### Finding #16 — ENVIRONMENT File Exposure
 
-- Malicious Pinokio scripts (installed via `git clone`) can run **any** command
-- WebSocket `emit` messages write directly to the PTY
-- The `sudo` module (`sudo-prompt-programfiles-x86`) elevates to admin/root
-
-**Affected files:**
-
-- `kernel/shell.js` — `exec()`, `emit2()`, `request()`
-- `kernel/bin/vs.js` — `sudo: true` for Visual Studio Build Tools
-- `kernel/bin/brew.js` — `sudo: true` for Xcode removal
-- `kernel/bin/registry.js` — `sudo: true` for Windows registry
-
-**Remediation (partial):**
-
-- Implement a command allowlist for system setup operations
-- Add user confirmation dialogs for `sudo` operations
-- Log all executed commands to an audit log
-- Consider sandboxing via containers or `seccomp` for untrusted scripts
+- **Risk:** Per-app `ENVIRONMENT` files contain API keys, tokens, model paths. Readable via file serving.
 
 ---
 
-### 5. `child_process.exec()` with unsanitized input — `kernel/util.js`
+## 🔵 INFORMATIONAL Findings
 
-```javascript
-// kernel/util.js - multiple occurrences
-child_process.exec(command); // Lines 415, 432, 462, 479, 502, 539
-```
+### Finding #17 — Missing Cookie Security Flags
 
-**Risk:** `child_process.exec()` spawns a shell and is vulnerable to command injection if `command` contains user input. Multiple calls in `util.js` are used for opening files/folders in the OS, which may include user-controlled paths.
+- Neither session middleware sets `httpOnly`, `secure`, or `sameSite`.
 
-**Remediation:**
+### Finding #18 — No Input Validation
 
-```javascript
-// Use execFile instead of exec (avoids shell interpretation)
-const { execFile } = require("child_process");
-execFile(program, [argument], callback);
-```
+- No schema validation (joi, zod, ajv). Request bodies and query params are trusted as-is.
 
-**Files:** `kernel/util.js` (lines 415, 432, 462, 479, 502, 539)
+### Finding #19 — Dependency Audit Needed
 
----
+- ~70 npm dependencies, many likely outdated with known CVEs.
 
-## 🟠 HIGH — No Authentication on API Endpoints
+### Finding #20 — No Audit Logging
 
-### 6. Express Server Has No Auth Middleware
-
-The Express app at `server/index.js` has **zero authentication** on any route. All endpoints are publicly accessible to anyone who can reach the port:
-
-- `GET /tools` — System tools and installed packages
-- `POST /pinokio/api` — Execute arbitrary API calls
-- `GET /asset/*` — Browse the entire Pinokio home directory
-- `GET /files/*` — Browse and download any file
-- WebSocket — Full terminal access, shell execution
-
-**Risk:** On a shared network or when port-forwarded, anyone can:
-
-- Execute arbitrary commands on the host
-- Browse the file system
-- Install/uninstall applications
-- Access API keys and environment variables
-
-**Remediation:**
-
-```javascript
-// Add auth middleware before routes
-const authMiddleware = (req, res, next) => {
-  // Skip for health checks
-  if (req.path === "/health") return next();
-
-  const token = req.headers["x-pinokio-token"] || req.query.token;
-  if (!token || token !== process.env.PINOKIO_API_TOKEN) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-  next();
-};
-
-// Apply to all API routes
-this.app.use("/pinokio", authMiddleware);
-```
-
-**Files:** `server/index.js` — needs new middleware
-
----
-
-## 🟠 HIGH — WebSocket Security
-
-### 7. No WebSocket Authentication — `server/socket.js`
-
-WebSocket connections are accepted without authentication:
-
-```javascript
-const wss = new WebSocket.Server({ server: this.parent.server });
-wss.on("connection", (ws, req) => {
-  // No auth check here
-  // Any connected client can:
-  //   - Subscribe to terminal output
-  //   - Send input to shells
-  //   - Execute API methods
-});
-```
-
-**Risk:** Any client that can connect to the WebSocket can:
-
-- Watch all terminal output (may contain secrets, API keys, passwords)
-- Type commands into active shells
-- Trigger script execution
-
-**Remediation:**
-
-- Validate a session token or API key on WebSocket `connection` event
-- Reject connections without valid credentials
-- Consider using `wss://` (WebSocket over TLS) when HTTPS is active
-
-**Files:** `server/socket.js`
-
----
-
-## 🟠 HIGH — Path Traversal
-
-### 8. File Serving with Traversal Risk — `server/index.js`
-
-```javascript
-// Serves the entire PINOKIO_HOME directory
-let serve = express.static(this.kernel.homedir, { fallthrough: true })
-this.app.use('/asset', serve, serveIndex(...))
-this.app.use('/files', serve2, serveIndex(...))
-```
-
-**Risk:** While `express.static` has some built-in protections, the `serveIndex` middleware combined with no auth means the entire Pinokio home directory is browsable, including:
-
-- `ENVIRONMENT` files (contain API keys, tokens)
-- `.git` directories (commit history, credentials)
-- Cache directories (model files, downloaded content)
-
-**Partial mitigation exists:** `server/routes/files.js` has `sanitizeSegments()` which strips `..` and absolute paths. However, the `/asset` route uses raw `express.static` without this protection.
-
-**Remediation:**
-
-- Add authentication to `/asset` and `/files` routes
-- Implement a file access allowlist
-- Never serve `ENVIRONMENT` files or `.git` directories via HTTP
-
-**Files:** `server/index.js` (lines ~4409-4436), `server/routes/files.js`
-
----
-
-## 🟠 HIGH — Sudo Execution
-
-### 9. Elevated Privilege Operations — `kernel/shell.js`, `kernel/bin/*.js`
-
-```javascript
-// kernel/shell.js:365-385
-if (params.sudo) {
-  // Executes command with elevated privileges using sudo-prompt
-  sudo.exec(params.message, options, (err, stdout, stderr) => { ... })
-}
-```
-
-Used in:
-
-- `kernel/bin/vs.js` — Visual Studio Build Tools installation
-- `kernel/bin/brew.js` — Xcode CLT removal (`rm -rf /Library/Developer/CommandLineTools`)
-- `kernel/bin/registry.js` — Windows registry modifications
-
-**Risk:** No user confirmation dialog — the script can silently request admin/root access. If the OS UAC prompt is auto-approved (enterprise settings), arbitrary code runs as admin.
-
-**Remediation:**
-
-- Always show a confirmation dialog before sudo operations
-- Log all sudo commands to an audit file
-- Implement a sudo command allowlist
-
-**Files:** `kernel/shell.js`, `kernel/bin/vs.js`, `kernel/bin/brew.js`, `kernel/bin/registry.js`
-
----
-
-## 🟡 MEDIUM — XSS via EJS Templates
-
-### 10. Unescaped Output in EJS Templates — `server/views/*.ejs`
-
-EJS uses `<%= ... %>` for escaped output and `<%- ... %>` for **unescaped** (raw HTML) output. Multiple templates use `<%- ... %>` extensively:
-
-```ejs
-<!-- server/views/bookmarklet.ejs -->
-<a href="<%- bookmarkletHref %>">Pinokio Create</a>
-
-<!-- server/views/agents.ejs -->
-<script type="application/json" id="plugin-data"><%- JSON.stringify(serializedPlugins) %></script>
-
-<!-- server/views/app.ejs -->
-var workspace = <%- JSON.stringify(name || "") %>
-
-<!-- server/views/registry_checkin.ejs -->
-const data = <%- dataJson %>;
-
-<!-- server/views/net.ejs -->
-const dnsCwd = "<%- typeof cwd !== 'undefined' ? JSON.stringify(cwd).slice(1, -1) : '' %>"
-```
-
-**Risk:** If any server-side variable contains user-controlled content (e.g., app names from `pinokio.json`, git commit messages, file names), it can inject arbitrary HTML/JavaScript into the page.
-
-**Most concerning patterns:**
-
-- `<%- dataJson %>` — If `dataJson` isn't properly serialized, script injection is possible
-- `<%- bookmarkletHref %>` — If the href can be manipulated
-- `<%- JSON.stringify(name) %>` — `JSON.stringify` is generally safe but can break out of `<script>` tags if the string contains `</script>`
-
-**Remediation:**
-
-```ejs
-<!-- Use escaped output where possible -->
-<%= variable %>
-
-<!-- For JSON in script tags, use a safe serializer -->
-<script type="application/json">
-  <%- JSON.stringify(data).replace(/</g, '\\u003c').replace(/>/g, '\\u003e') %>
-</script>
-```
-
-**Files:** `server/views/bookmarklet.ejs`, `server/views/agents.ejs`, `server/views/app.ejs`, `server/views/registry_checkin.ejs`, `server/views/net.ejs`, `server/views/checkpoints.ejs`, and more.
-
----
-
-## 🟡 MEDIUM — Missing Security Headers
-
-### 11. No Helmet / CSP / Security Headers
-
-The Express app does not use:
-
-- **`helmet`** — Standard security header middleware
-- **Content-Security-Policy (CSP)** — Prevents XSS and data injection
-- **X-Frame-Options** — Prevents clickjacking
-- **X-Content-Type-Options** — Prevents MIME-sniffing attacks
-- **Strict-Transport-Security** — Forces HTTPS
-
-**Remediation:**
-
-```bash
-npm install helmet
-```
-
-```javascript
-const helmet = require("helmet");
-this.app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"], // needed for EJS inline scripts
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'", "ws://localhost:*", "wss://localhost:*"],
-      },
-    },
-  }),
-);
-```
-
-**Files:** `server/index.js` — needs new dependency and middleware
-
----
-
-## 🟡 MEDIUM — No Rate Limiting
-
-### 12. No Rate Limiting on Any Endpoint
-
-There is no rate limiting on:
-
-- Login/passcode attempts (`pipe/index.js`)
-- API endpoints (`server/index.js`)
-- WebSocket connections (`server/socket.js`)
-- File uploads (`multer` endpoints)
-
-**Risk:** Brute-force attacks on passcodes, DoS via rapid API calls, resource exhaustion via file uploads.
-
-**Remediation:**
-
-```bash
-npm install express-rate-limit
-```
-
-```javascript
-const rateLimit = require("express-rate-limit");
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit per IP
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-this.app.use("/pinokio", limiter);
-```
-
-**Files:** `server/index.js`, `pipe/index.js`
-
----
-
-## 🟡 MEDIUM — Dynamic Module Loading
-
-### 13. `clear-module` and Dynamic `require()` — `kernel/loader.js`
-
-```javascript
-const clearModule = require("clear-module");
-// Used to clear cached modules and re-require them
-```
-
-**Risk:** If any module path is derived from user input, this could be used to load and execute arbitrary JavaScript files.
-
-**Files:** `kernel/loader.js`
-
----
-
-## 🟢 LOW — Information Disclosure
-
-### 14. Verbose Error Messages
-
-Error messages in multiple places expose internal paths and stack traces:
-
-```javascript
-console.log("getPlugin ERROR", e); // server/index.js
-res.status(404).send(e.message); // Various routes
-```
-
-**Remediation:** In production, return generic error messages and log details server-side only.
-
-### 15. Directory Listing Enabled
-
-`serveIndex` middleware is enabled for `/asset` and `/files` routes, allowing full directory browsing.
-
-### 16. Process Environment Exposure
-
-The `ENVIRONMENT` file for each app contains sensitive variables (API keys, model tokens). These are readable through the file serving routes.
-
----
-
-## 🔵 INFORMATIONAL — Defense-in-Depth Opportunities
-
-### 17. Cookie Security Flags
-
-Neither session middleware sets `httpOnly`, `secure`, or `sameSite` cookie flags. Add them:
-
-```javascript
-cookie: {
-  httpOnly: true,      // Prevent XSS cookie theft
-  secure: isHTTPS,     // Only send over HTTPS
-  sameSite: 'lax',     // Prevent CSRF
-  maxAge: 86400000     // 24h expiry
-}
-```
-
-### 18. Input Validation
-
-No schema validation library (e.g., `joi`, `zod`, `ajv`) is used. All request bodies and query parameters are trusted as-is.
-
-### 19. Dependency Audit
-
-Run regular dependency audits:
-
-```bash
-npm audit
-npm audit fix
-```
-
-The project has ~70 dependencies — many are likely outdated and may have known CVEs.
-
-### 20. Logging & Audit Trail
-
-No structured audit logging exists for:
-
-- Shell commands executed
-- Files accessed/modified
-- Apps installed/uninstalled
-- Authentication attempts
-- Sudo operations
+- No structured logging for: shell commands, file access, app installs, auth attempts, sudo operations.
 
 ---
 
@@ -640,18 +300,3 @@ Use this checklist when reviewing changes:
 - [ ] **Rate limiting** — Brute-force-sensitive endpoints are rate-limited
 - [ ] **HTTPS** — TLS is enforced when `PINOKIO_HTTPS_ACTIVE=1`
 - [ ] **Headers** — Security headers (CSP, HSTS, X-Frame-Options) are set
-
----
-
-## Priority Remediation Order
-
-1. **🔴 Hardcoded session secrets** — Quick fix, high impact
-2. **🔴 CORS `origin: '*'`** — Quick fix, prevents cross-origin attacks
-3. **🟠 API authentication** — Medium effort, prevents unauthorized access
-4. **🟠 WebSocket authentication** — Medium effort, prevents shell hijacking
-5. **🟡 Security headers (helmet)** — Quick fix, defense-in-depth
-6. **🟡 Rate limiting** — Quick fix, prevents brute-force
-7. **🟡 XSS in EJS templates** — Ongoing effort, template-by-template
-8. **🟠 Path traversal hardening** — Medium effort, restrict file access
-9. **🔴 Command injection hardening** — Long-term, requires architecture changes
-10. **🟢 Audit logging** — Medium effort, enables incident response
