@@ -1,68 +1,114 @@
 ---
-description: How to sync the fork with the latest pinokiod npm version
+description: How to sync the fork with the latest pinokiod npm version (conflict-free)
 ---
 
-## Check for Updates
+> **Before syncing**, read the upstream-sync skill: `.agent/skills/upstream-sync/SKILL.md`
+> It explains the patch-layer architecture that keeps our security fixes separate from upstream code.
 
-1. Check the latest version on npm:
+## Pre-Sync Check
+
+1. Verify our patches directory exists and is intact:
+
+```bash
+ls patches/security/
+```
+
+2. Check the latest version on npm:
 
 ```bash
 npm view pinokiod version
 ```
 
-2. Compare with our current version:
+3. Compare with our current version:
 
 ```bash
 node -p "require('./package.json').version"
 ```
 
+If a new version is available, continue below.
+
 ## Sync Steps
 
-3. If a new version is available, download the tarball:
+4. Create a sync branch (replace `<VERSION>` with actual version):
 
 ```bash
-npm pack pinokiod@latest --pack-destination .
+git checkout -b sync/pinokiod-<VERSION>
 ```
 
-4. Create a new branch for the sync (replace `<NEW_VERSION>` with actual version):
+5. Download the tarball:
 
 ```bash
-git checkout -b sync/pinokiod-<NEW_VERSION>
+npm pack pinokiod@<VERSION> --pack-destination .
 ```
 
-5. Extract the new version (overwriting existing files):
+6. Extract — overwrite all upstream files (safe, our patches are separate):
 
 ```bash
-tar -xzf pinokiod-<NEW_VERSION>.tgz --strip-components=1
+tar -xzf pinokiod-<VERSION>.tgz --strip-components=1
 ```
 
-6. Clean up the tarball:
+7. Clean up the tarball:
 
 ```bash
-rm pinokiod-<NEW_VERSION>.tgz
+rm pinokiod-<VERSION>.tgz
 ```
 
-7. Review the changes:
+8. Verify our patches weren't touched:
+
+```bash
+git diff patches/
+```
+
+This should show NO changes. If it does, upstream somehow included a `patches/` dir — investigate.
+
+## Post-Sync Verification
+
+9. Install any new dependencies:
+
+```bash
+npm install
+```
+
+10. Quick smoke test — verify patches still load:
+
+```bash
+node -e "require('./patches/entry')"
+```
+
+11. Review upstream changes:
 
 ```bash
 git diff --stat
 ```
 
-8. Stage and commit:
+12. Check if upstream changed any APIs our patches hook into:
 
 ```bash
-git add -A && git commit -m "sync: update pinokiod to v<NEW_VERSION> from npm"
+git diff server/index.js | grep -E "prototype\.start|this\.app\s*="
+git diff server/socket.js | grep -E "WebSocket\.Server|wss\.on"
 ```
 
-9. Merge into main branch:
+If these patterns changed, update the corresponding patch files.
+
+13. Stage and commit:
 
 ```bash
-git checkout main && git merge sync/pinokiod-<NEW_VERSION>
+git add -A && git commit -m "sync: update pinokiod to v<VERSION>"
 ```
 
-## Notes
+14. Merge into main:
 
-- Replace `<NEW_VERSION>` with the actual version number (e.g., `6.0.17`)
-- Always review the diff before merging to check for conflicts with custom changes
-- The npm registry is the source of truth — GitHub repo may lag behind
-- After syncing, run `npm install` to update any changed dependencies
+```bash
+git checkout main && git merge sync/pinokiod-<VERSION>
+```
+
+## If Something Breaks
+
+If patches fail after sync, check the conflict resolution checklist in:
+`.agent/skills/upstream-sync/SKILL.md` → "Conflict Resolution Checklist"
+
+Common issues:
+
+- **Server.prototype.start renamed** → Update `patches/entry.js`
+- **Route paths changed** → Update `patches/security/auth-middleware.js`
+- **Upstream added same dependency** → Remove our duplicate, use theirs
