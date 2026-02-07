@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment
+ENVIRONMENT
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Pinokio runtime data
+cache/
+drive/
+logs/
+network/
+
+# Build artifacts
+*.tgz
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
