@@ -647,7 +647,10 @@ class Bin {
       mode = req.mode.trim()
     }
     if (!mode) {
-      throw new Error('kernel.bin.install requires `requirements` array or `mode` string in params')
+      mode = 'dev'
+      if (ondata) {
+        ondata({ html: '<b>No setup mode provided. Falling back to "dev".</b>' }, 'notify2')
+      }
     }
     const preset = this.preset(mode)
     if (!preset) {

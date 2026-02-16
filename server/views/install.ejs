@@ -239,11 +239,31 @@ document.addEventListener("DOMContentLoaded", async () => {
   observer.observe(document.body)
   await new Promise((resolve, reject) => {
     console.log({ cols: term.cols, rows: term.rows })
+    const requirementsValue = (document.querySelector("#requirements")?.value || "").trim()
+    let installParams = { mode: "dev" }
+    if (requirementsValue.length > 0) {
+      if (requirementsValue.startsWith("[") || requirementsValue.startsWith("{")) {
+        try {
+          const parsed = JSON.parse(requirementsValue)
+          if (Array.isArray(parsed)) {
+            installParams = { requirements: parsed }
+          } else if (parsed && Array.isArray(parsed.requirements)) {
+            installParams = { requirements: parsed.requirements }
+          } else if (parsed && typeof parsed.mode === "string" && parsed.mode.trim().length > 0) {
+            installParams = { mode: parsed.mode.trim() }
+          }
+        } catch (e) {
+          // Keep the default preset on malformed JSON payload.
+        }
+      } else {
+        installParams = { mode: requirementsValue }
+      }
+    }
     socket.run({
       id: location.pathname,
       method: "kernel.bin.install",
 //      params: options,
-      params: document.querySelector("#requirements").value,
+      params: installParams,
       client: {
         cols: term.cols,
         rows: term.rows,
