@@ -31,7 +31,7 @@ body.dark aside .tab {
   color: white;
 }
 body.dark aside .tab:hover, aside .tab:hover {
-  color: rgba(127, 91, 243, 0.9) !important;
+  color: royalblue !important;
   opacity: 1;
 }
 aside .tab {
@@ -159,7 +159,7 @@ body.dark .backup-modal-description {
   transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 .line.backup-row:hover {
-  background: rgba(127, 91, 243, 0.05);
+  background: royalblue;
   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
 }
 .snapshot-option {
@@ -312,7 +312,7 @@ body.dark .repo-message {
   font-weight: 700;
 }
 .installed-link {
-  color: rgba(127, 91, 243, 0.95);
+  color: royalblue;
   text-decoration: none;
 }
 .installed-link:hover {
@@ -369,7 +369,7 @@ body.dark .backup-loading {
   width: 18px;
   height: 18px;
   border: 3px solid rgba(15, 23, 42, 0.15);
-  border-top-color: rgba(127, 91, 243, 0.95);
+  border-top-color: royalblue;
   border-radius: 50%;
   animation: backup-spin 0.8s linear infinite;
 }
@@ -860,7 +860,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 card.scrollIntoView({ behavior: "smooth", block: "center" })
               } catch (_) {}
               try {
-                card.style.boxShadow = "0 0 0 2px rgba(127, 91, 243, 0.9)"
+                card.style.boxShadow = "0 0 0 2px royalblue"
               } catch (_) {}
               focusBtn = card.querySelector(".snapshot-install")
             }
@@ -964,29 +964,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <% } %>
     </div>
   </div>
-  <aside>
-    <div class='btn-tab'>
-      <button type='button' class='btn' id='create-launcher-button'><i class="fa-solid fa-plus"></i><div class='caption'>Create</div></button>
-      <a class='btn' id='explore' href="/home?mode=explore"><i class="fa-solid fa-globe"></i><div class='caption'>Community</div></a>
-    </div>
-    <a href="/home" class='tab'><i class='fas fa-laptop-code'></i><div class='caption'>This machine</div></a>
-    <a href="/network" class='tab'><i class="fa-solid fa-wifi"></i><div class='caption'>Local network</div></a>
-    <% if (list && list.length > 0) { %>
-      <% let brands = { win32: "windows", darwin: "apple", linux: "Linux" } %>
-      <% list.forEach(({ host, name, platform }) => { %>
-        <a href="/net/<%=name%>" class='submenu tab'><i class="fa-brands fa-<%=brands[platform]%>"></i><div class='caption'><%=name%> (<%=current_host === host ? 'this machine' : host%>)</div></a>
-      <% }) %>
-    <% } %>
-    <a href="/connect" class='tab'><i class="fa-solid fa-plug"></i><div class='caption'>Login</div></a>
-    <a class='tab' href="<%=portal%>" target="_blank"><i class="fa-solid fa-question"></i><div class='caption'>Help</div></a>
-    <a class='tab' id='genlog' href="/logs"><i class="fa-solid fa-laptop-code"></i><div class='caption'>Logs</div></a>
-    <a class='tab selected' href="/checkpoints"><i class="fa-solid fa-clock-rotate-left"></i><div class='caption'>Checkpoints</div></a>
-    <a class='tab' href="/screenshots"><i class="fa-solid fa-camera"></i><div class='caption'>Screenshots</div></a>
-    <a class='tab' href="/tools"><i class="fa-solid fa-toolbox"></i><div class='caption'>Installed Tools</div></a>
-    <a class='tab' href="/agents"><i class="fa-solid fa-robot"></i><div class='caption'>Agents</div></a>
-    <a class='tab' href="/home?mode=settings"><i class="fa-solid fa-gear"></i><div class='caption'>Settings</div></a>
-    <%- include('partials/peer_access_points', { peer_access_points, peer_url, peer_qr }) %>
-  </aside>
+  <%- include('partials/main_sidebar', { selected: 'checkpoints' }) %>
 </main>
 </body>
 </html>

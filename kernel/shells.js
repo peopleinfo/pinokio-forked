@@ -71,6 +71,8 @@ class Shells {
         id: s.id,
         group: s.group,
         start_time: s.start_time,
+        path: s.path,
+        source_message: s.source_message,
         cmd: s.cmd,
         done: s.done,
         state: s.state
@@ -180,6 +182,60 @@ class Shells {
       }
     }
     const parentMeta = params.$parent || null
+    const queueTriggerAction = async (action, eventMatch) => {
+      if (!action) {
+        return
+      }
+      if (!parentMeta || !parentMeta.path) {
+        throw new Error(`unable to trigger "${action}" without a parent script`)
+      }
+
+      const runningKey = parentMeta.id || parentMeta.path
+      if (runningKey && !this.kernel.api.running[runningKey]) {
+        return
+      }
+
+      let triggerScript = parentMeta.body
+      let triggerCwd = parentMeta.cwd
+      if (!triggerScript || !Array.isArray(triggerScript[action])) {
+        const resolved = await this.kernel.api.resolveScript(parentMeta.path)
+        triggerScript = resolved.script
+        if (!triggerCwd) {
+          triggerCwd = resolved.cwd
+        }
+      }
+
+      const triggerSteps = (triggerScript && Array.isArray(triggerScript[action])) ? triggerScript[action] : null
+      if (!triggerSteps || triggerSteps.length === 0) {
+        throw new Error(`missing or invalid attribute: ${action}`)
+      }
+
+      const request = {
+        id: parentMeta.id,
+        uri: parentMeta.uri,
+        path: parentMeta.path,
+        git: parentMeta.git,
+        cwd: triggerCwd || parentMeta.cwd,
+        origin: parentMeta.origin,
+        caller: parentMeta.caller,
+        client: parentMeta.client,
+        action
+      }
+      const input = {
+        event: eventMatch,
+        trigger: action
+      }
+
+      this.kernel.api.queue(
+        request,
+        triggerSteps[0],
+        input,
+        0,
+        triggerSteps.length,
+        triggerCwd || parentMeta.cwd,
+        parentMeta.args
+      )
+    }
 
     const plannedShell = params.shell || (this.kernel.platform === 'win32' ? 'cmd.exe' : 'bash')
     await this.ensureBracketedPasteSupport(plannedShell)
@@ -191,6 +247,10 @@ class Shells {
 
     let m
     let matched_index
+    const onceHandlers = new Set()
+    const handlerLastMatchEnd = new Map()
+    let liveEventBuffer = ""
+    let liveEventOffset = 0
 
     // if error doesn't exist, add default "error:" event
     if (!params.on) {
@@ -222,6 +282,8 @@ class Shells {
               event: <regex>,
               done: true|false,
               kill: true|false,
+              trigger: <alternate script action>,
+              once: true|false,
               debug: true|false,
               notify: {
                 title,
@@ -234,9 +296,20 @@ class Shells {
         }
       */
       try {
+        const rawChunk = typeof stream.raw === "string"
+          ? stream.raw.replaceAll(/[\r\n]/g, "")
+          : ""
+        if (rawChunk.length > 0) {
+          liveEventBuffer = (liveEventBuffer + rawChunk).slice(-300)
+          liveEventOffset += rawChunk.length
+        }
+        const liveEventBufferStart = Math.max(0, liveEventOffset - liveEventBuffer.length)
         if (params.on && Array.isArray(params.on)) {
           for(let i=0; i<params.on.length; i++) {
             let handler = params.on[i]
+            if (handler.once && onceHandlers.has(i)) {
+              continue
+            }
             // regexify
             //let matches = /^\/([^\/]+)\/([dgimsuy]*)$/.exec(handler.event)
             if (handler.event) {
@@ -249,6 +322,9 @@ class Shells {
                 let re = new RegExp(matches[1], matches[2])
                 let test = re.exec(sh.monitor)
                 if (test && test.length > 0) {
+                  if (handler.once) {
+                    onceHandlers.add(i)
+                  }
                   // reset monitor
                   sh.monitor = ""
                   let params = this.kernel.template.render(handler.notify, { event: test })
@@ -263,20 +339,35 @@ class Shells {
                   matches[2] += "g"   // if g option is not included, include it (need it for matchAll)
                 }
                 let re = new RegExp(matches[1], matches[2])
-                if (stream.cleaned) {
-                  let line = stream.cleaned.replaceAll(/[\r\n]/g, "")
-                  let rendered_event = [...line.matchAll(re)]
+                if (liveEventBuffer.length > 0) {
+                  const lastHandledEnd = handlerLastMatchEnd.get(i) || 0
+                  let rendered_event = [...liveEventBuffer.matchAll(re)].filter((match) => {
+                    const absoluteEnd = liveEventBufferStart + match.index + match[0].length
+                    return absoluteEnd > lastHandledEnd
+                  })
                   // 3. if the rendered expression is truthy, run the "run" script
                   if (rendered_event.length > 0) {
+                    if (handler.once) {
+                      onceHandlers.add(i)
+                    }
+                    const lastMatch = rendered_event[rendered_event.length - 1]
+                    handlerLastMatchEnd.set(i, liveEventBufferStart + lastMatch.index + lastMatch[0].length)
                     stream.matches = rendered_event
+                    m = rendered_event[0]
+                    matched_index = i
+                    if (typeof handler.trigger === "string" && handler.trigger.trim()) {
+                      const triggerAction = handler.trigger.trim()
+                      queueTriggerAction(triggerAction, rendered_event[0]).catch((e) => {
+                        console.log("Trigger error", e)
+                        if (ondata) {
+                          ondata({ raw: (e && e.stack) ? e.stack : String(e) })
+                        }
+                      })
+                    }
                     if (handler.kill) {
-                      m = rendered_event[0]
-                      matched_index = i
                       sh.kill()
                     }
                     if (handler.done) {
-                      m = rendered_event[0]
-                      matched_index = i
                       sh.continue()
                     }
                   }
