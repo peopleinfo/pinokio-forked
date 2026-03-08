@@ -15,6 +15,7 @@
 <link href="/filepond-plugin-image-edit.min.css" rel="stylesheet" />
 <link href="/style.css" rel="stylesheet"/>
 <link href="/urldropdown.css" rel="stylesheet" />
+<link href="/tom-select.css" rel="stylesheet" />
 <% if (agent === "electron") { %>
   <link href="/electron.css" rel="stylesheet"/>
 <% } %>
@@ -137,12 +138,12 @@ header .runner {
   margin-top: 5px;
 }
 a.badge {
-  color: rgba(127, 91, 243, 0.9);
+  color: royalblue;
   text-decoration: none;
   cursor: pointer;
 }
 .badge a {
-  color: rgba(127, 91, 243, 0.9);
+  color: royalblue;
   text-decoration: none;
 }
 body.dark .btn {
@@ -214,17 +215,17 @@ body.dark .context-menu .btn {
   color: white;
   background: none !important;
 }
-body.dark .open-menu, body.dark .browse {
+body.dark .open-menu, body.dark .browse, body.dark .toggle-star {
   border: none !important;
   /*
   background: black !important;
   */
   color: white !important;
 }
-.open-menu:hover, .browse:hover, body.dark .open-menu:hover, body.dark .browse:hover {
-  color: rgba(127, 91, 243, 0.9) !important;
+.open-menu:hover, .browse:hover, .toggle-star:hover, body.dark .open-menu:hover, body.dark .browse:hover, body.dark .toggle-star:hover {
+  color: royalblue !important;
 }
-.open-menu, .browse {
+.open-menu, .browse, .toggle-star {
 /*
   width: 80px;
   */
@@ -234,6 +235,12 @@ body.dark .open-menu, body.dark .browse {
   /*
   border: 1px solid rgba(0, 0, 0, 0.3);
   */
+}
+.toggle-star.is-starred i {
+  color: #b8860b;
+}
+body.dark .toggle-star.is-starred i {
+  color: #ffcc66;
 }
 .open-menu.selected {
   border: none !important;
@@ -259,7 +266,7 @@ aside {
   flex-shrink: 0;
 }
 body.dark aside .tab:hover, aside .tab:hover {
-  color: rgba(127, 91, 243, 0.9) !important;
+  color: royalblue !important;
   opacity: 1;
 }
 aside .tab i {
@@ -297,6 +304,456 @@ aside .tab.selected {
   */
   font-weight: bold;
   opacity: 1;
+}
+aside .btn-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 10px;
+  margin-top: 10px;
+}
+aside .btn-tab .btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  text-align: left;
+  margin: 0;
+  padding: 10px 12px;
+  border: none !important;
+  border-radius: 0 !important;
+  background: rgba(0, 0, 0, 0.04);
+  box-sizing: border-box;
+}
+body.dark aside .btn-tab .btn {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+aside .btn-tab .btn i {
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+aside .btn-tab .btn .caption {
+  display: block;
+}
+.home-apps-header {
+  margin: 0;
+  padding: 8px 12px 8px;
+}
+
+.home-apps-header h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.home-apps-header p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(15, 23, 42, 0.7);
+  word-break: break-word;
+}
+
+.home-apps-header-actions {
+  margin-top: 4px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.home-apps-header-main-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.home-apps-header-actions .qr {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.home-apps-header-actions .qr > a {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+  height: 25px;
+  min-height: 25px;
+  padding: 0 10px;
+  border: 1px solid rgba(127, 127, 127, 0.3);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.8);
+  text-decoration: none !important;
+  color: inherit !important;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.home-apps-header-actions .qr img {
+  display: none;
+}
+
+.home-apps-header-actions .qr .caption {
+  display: block;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 700;
+  width: auto !important;
+  text-align: left;
+  white-space: nowrap;
+  word-break: normal;
+}
+
+.home-apps-header-actions .peer-access-trigger-icon {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.home-apps-header-actions .qr .caption:last-child {
+  display: none;
+}
+
+.home-apps-header .home-apps-create-btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid royalblue !important;
+  background: royalblue !important;
+  color: #f8fbff !important;
+  border-radius: 4px;
+  height: 25px;
+  min-height: 25px;
+  padding: 0 10px;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  box-sizing: border-box;
+}
+
+.home-apps-header .home-apps-create-btn i {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.home-apps-header .home-apps-create-btn:hover {
+  border-color: #315cd8 !important;
+  background: #315cd8 !important;
+}
+
+.home-apps-header .home-apps-create-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.home-apps-header .home-apps-sort {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  gap: 5px;
+  height: 25px;
+  min-height: 25px;
+  padding: 0 10px;
+  border: 1px solid rgba(127, 127, 127, 0.3);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.8);
+  box-sizing: border-box;
+  margin-left: auto;
+  align-self: flex-start;
+  flex: 0 0 auto;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.home-apps-header .home-apps-sort:hover {
+  border-color: rgba(65, 105, 225, 0.45);
+  background: rgba(65, 105, 225, 0.08);
+}
+
+.home-apps-header .home-apps-sort:focus-within {
+  border-color: royalblue;
+  background: rgba(65, 105, 225, 0.12);
+}
+
+.home-apps-header .home-apps-sort .home-apps-sort-icon {
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.85;
+  flex: 0 0 auto;
+}
+
+.home-apps-header .home-apps-sort .home-apps-sort-caret {
+  font-size: 9px;
+  line-height: 1;
+  opacity: 0.7;
+  pointer-events: none;
+  flex: 0 0 auto;
+}
+
+.home-apps-header .home-apps-sort label {
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.78);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.home-apps-header .home-apps-sort select {
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  color: inherit;
+  padding: 0;
+  margin: 0;
+  min-width: 88px;
+  height: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.home-apps-header .home-apps-sort .ts-wrapper {
+  flex: 0 0 auto;
+  width: 132px;
+  min-width: 132px;
+}
+
+.home-apps-header .home-apps-sort .ts-wrapper.single .ts-control {
+  border: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.home-apps-header .home-apps-sort .ts-control > .item {
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  color: inherit;
+}
+
+.home-apps-header .home-apps-sort .ts-control > input {
+  width: 0 !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.home-apps-header .home-apps-sort .ts-dropdown {
+  margin: 8px 0 0;
+  width: 100%;
+  min-width: 100%;
+  border: 1px solid rgba(127, 127, 127, 0.25);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.14);
+}
+
+.home-apps-header .home-apps-sort .ts-dropdown .option {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.9);
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
+.home-apps-header .home-apps-sort .ts-dropdown .option.active,
+.home-apps-header .home-apps-sort .ts-dropdown [data-selectable].option:hover {
+  background: rgba(65, 105, 225, 0.14);
+  color: rgba(15, 23, 42, 0.95);
+}
+
+body.dark .home-apps-header {
+  border-bottom-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark .home-apps-header h2 {
+  color: rgba(241, 245, 249, 0.96);
+}
+
+body.dark .home-apps-header p {
+  color: rgba(203, 213, 225, 0.86);
+}
+
+body.dark .home-apps-header .home-apps-create-btn {
+  border-color: royalblue !important;
+  background: royalblue !important;
+  color: rgba(248, 250, 252, 0.98) !important;
+}
+
+body.dark .home-apps-header .home-apps-create-btn:hover {
+  border-color: #315cd8 !important;
+  background: #315cd8 !important;
+}
+
+body.dark .home-apps-header .home-apps-sort {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(15, 23, 42, 0.55);
+}
+
+body.dark .home-apps-header .home-apps-sort:hover {
+  border-color: rgba(99, 140, 255, 0.65);
+  background: rgba(65, 105, 225, 0.2);
+}
+
+body.dark .home-apps-header .home-apps-sort:focus-within {
+  border-color: #5f84ff;
+  background: rgba(65, 105, 225, 0.28);
+}
+
+body.dark .home-apps-header .home-apps-sort label {
+  color: rgba(226, 232, 240, 0.9);
+}
+
+body.dark .home-apps-header .home-apps-sort select {
+  color: rgba(226, 232, 240, 0.9);
+}
+
+body.dark .home-apps-header .home-apps-sort .ts-control > .item {
+  color: rgba(226, 232, 240, 0.9);
+}
+
+body.dark .home-apps-header .home-apps-sort .ts-dropdown {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(15, 23, 42, 0.98);
+  box-shadow: 0 14px 28px rgba(2, 6, 23, 0.68);
+}
+
+body.dark .home-apps-header .home-apps-sort .ts-dropdown .option {
+  color: rgba(226, 232, 240, 0.92);
+}
+
+body.dark .home-apps-header .home-apps-sort .ts-dropdown .option.active,
+body.dark .home-apps-header .home-apps-sort .ts-dropdown [data-selectable].option:hover {
+  background: rgba(95, 132, 255, 0.24);
+  color: rgba(248, 250, 252, 0.98);
+}
+
+body.dark .home-apps-header-actions .qr {
+  border-color: transparent;
+  background: transparent;
+}
+
+body.dark .home-apps-header-actions .qr > a {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(15, 23, 42, 0.55);
+}
+.home-mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  overflow: visible;
+  background: rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+}
+body.dark .home-mode-switch {
+  border-color: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
+}
+.home-mode-switch .mode-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  color: inherit;
+  border: none;
+  background: transparent;
+  font-weight: 600;
+  font-size: 13px;
+  opacity: 1;
+  line-height: 1;
+  box-sizing: border-box;
+}
+.home-mode-switch .mode-link:hover {
+  background: rgba(65, 105, 225, 0.12);
+}
+.home-mode-switch .mode-link.selected,
+.home-mode-switch .mode-link[aria-current="page"] {
+  background: royalblue !important;
+  color: #fff !important;
+}
+body.dark .home-mode-switch .mode-link.selected,
+body.dark .home-mode-switch .mode-link[aria-current="page"] {
+  background: royalblue !important;
+  color: #fff !important;
+}
+.home-search-mode-switch {
+  flex: 0 0 auto;
+  margin-right: 0;
+  align-self: center;
+}
+.home-search-form {
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+}
+body.dark .home-search-form {
+  border-bottom-color: rgba(148, 163, 184, 0.22);
+}
+.home-search-form .home-search-mode-switch {
+  align-self: center;
+}
+.home-search-form .home-mode-switch {
+  gap: 0;
+  padding: 0;
+  height: 25px;
+  align-items: center;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.home-search-form .home-mode-switch .mode-link {
+  height: 100%;
+  padding: 0 10px;
+  border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 400;
+}
+.home-search-form .home-mode-switch .mode-link + .mode-link {
+  border-left: 1px solid rgba(0, 0, 0, 0.14);
+}
+body.dark .home-search-form .home-mode-switch .mode-link + .mode-link {
+  border-left-color: rgba(255, 255, 255, 0.05);
+}
+.home-search-form input[type='search'].flexible {
+  height: 25px;
+  min-height: 25px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
 }
 #suggestion {
   padding: 20px;
@@ -363,13 +820,23 @@ body.dark aside .current.selected {
   }
   aside .btn-tab .btn {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
   }
   aside .btn-tab .btn .caption {
-    display: none; 
+    display: block; 
+  }
+  .home-search-form {
+    flex-wrap: wrap;
+    gap: 8px;
   }
   header .flexible {
     min-width: unset;
+  }
+}
+@media only screen and (max-width: 900px) {
+  body.is-home .main-sidebar,
+  main > .container:has(.home-search-form) + .main-sidebar {
+    display: none !important;
   }
 }
 @media only screen and (max-width: 480px) {
@@ -412,8 +879,9 @@ body.dark aside .current.selected {
 <script src="/fscreator.js"></script>
 <script src="/fseditor.js"></script>
 <script src="/urldropdown.js"></script>
+<script src="/tom-select.complete.min.js"></script>
 </head>
-<body class='<%=theme%>' data-agent="<%=agent%>">
+<body class='<%= [theme, ishome ? "is-home" : ""].filter(Boolean).join(" ") %>' data-agent="<%=agent%>">
 <% if (error) { %>
 <nav class='error-message'>
   <div><%=error%></div>
@@ -421,9 +889,6 @@ body.dark aside .current.selected {
   <a class='btn' target="_blank" href="<%=install%>">Download</a>
 </nav>
 <% } %>
-<!--
-<header class='grabbable'>
--->
 <header class='navheader grabbable'>
 <h1>
 <% if (ishome) { %>
@@ -490,15 +955,16 @@ body.dark aside .current.selected {
 <div id='terminal' class='hidden'></div>
 <div class='container'>
 <% if (ishome) { %>
-  <form class='search'>
-    <div class='app-btns'>
-      <!--
-      <a class='btn create-new' href="/init"><i class="fa-solid fa-plus"></i> Build</a>
-      <a class='btn' id='explore' href="/home?mode=explore"><i class="fa-solid fa-globe"></i> Community</a>
-      -->
-      <!--
-      <a class='btn' id='explore' href="/home?mode=explore"><i class="fa-solid fa-magnifying-glass"></i> Community</a>
-      -->
+  <form class='search home-search-form'>
+    <div class="home-mode-switch home-search-mode-switch" role="tablist" aria-label="Home modes">
+      <a class="mode-link selected" href="/home" aria-current="page">
+        <i class="fa-solid fa-box"></i>
+        <span>Apps</span>
+      </a>
+      <a class="mode-link" href="/home?mode=terminals">
+        <i class="fa-solid fa-robot"></i>
+        <span>Agents</span>
+      </a>
     </div>
     <% if (display.includes("form")) { %>
       <input type='search' class="flexible" placeholder='Search apps'>
@@ -507,17 +973,36 @@ body.dark aside .current.selected {
   </form>
 <% } %>
 <% if (ishome) { %>
-  <!--
-  <div id='suggestion' class='hidden'>
-    <img src="/pinokio-black.png"/>
-    <div class='bubble prompt'></div>
-    <button id='create-ai' class='btn'>Create</button>
-  </div>
-  -->
+  <% const currentHomeSort = (typeof home_sort === "string" ? home_sort : "most_used") %>
+  <section class="home-apps-header" aria-label="Apps intro">
+    <div class="home-apps-header-actions">
+      <div class="home-apps-header-main-actions">
+        <button type="button" class="btn home-apps-create-btn" id="create-launcher-button">
+          <i class="fa-solid fa-plus"></i>
+          <span>Create an app</span>
+        </button>
+        <%- include('partials/peer_access_points', {
+          peer_access_points: (typeof peer_access_points !== "undefined" ? peer_access_points : null),
+          peer_url: (typeof peer_url !== "undefined" ? peer_url : null),
+          peer_qr: (typeof peer_qr !== "undefined" ? peer_qr : null),
+        }) %>
+      </div>
+      <div class="home-apps-sort">
+        <i class="fa-solid fa-sort home-apps-sort-icon" aria-hidden="true"></i>
+        <label for="home-apps-sort-select">Sort</label>
+        <select id="home-apps-sort-select" aria-label="Sort apps">
+          <option value="most_used" <%= currentHomeSort === "most_used" ? "selected" : "" %>>Most used</option>
+          <option value="last_opened" <%= currentHomeSort === "last_opened" ? "selected" : "" %>>Last opened</option>
+          <option value="az" <%= currentHomeSort === "az" ? "selected" : "" %>>A-Z</option>
+        </select>
+        <i class="fa-solid fa-chevron-down home-apps-sort-caret" aria-hidden="true"></i>
+      </div>
+    </div>
+  </section>
   <% if (running.length > 0) { %>
     <div class='running-apps'>
       <% running.forEach((item, index) => { %>
-        <a target="<%=item.target || '_self'%>" href="<%=item.browser_url%>" data-description="<%=item.description%>" data-index="<%=item.index%>" data-name="<%=item.name%>" data-title="<%=item.name%>" data-uri="<%=item.uri%>" data-icon="<%=item.icon%>" data-path="<%=item.path%>"  data-iconpath="<%=item.iconpath ? item.iconpath : ''%>" class='line align-top'>
+        <a target="<%=item.target || '_self'%>" href="<%=item.browser_url%>" data-description="<%=item.description%>" data-index="<%=item.index%>" data-name="<%=item.name%>" data-title="<%=item.name%>" data-uri="<%=item.uri%>" data-icon="<%=item.icon%>" data-path="<%=item.path%>"  data-iconpath="<%=item.iconpath ? item.iconpath : ''%>" data-starred="<%=item.starred ? "1" : "0"%>" data-launch-count-total="<%=item.launch_count_total || 0%>" data-last-launch-at="<%=item.last_launch_at || ''%>" class='line align-top'>
           <h3>
             <div class='item-icon'>
               <% if (item.icon) { %>
@@ -538,6 +1023,15 @@ body.dark aside .current.selected {
               <div class='uri'><%=item.filepath%></div>
               <div class='description'><%=item.description%></div>
               <div class='menu-btns'>
+                <button
+                  class='btn toggle-star <%=item.starred ? "is-starred" : ""%>'
+                  data-app-id="<%=item.uri%>"
+                  data-starred="<%=item.starred ? "1" : "0"%>"
+                  title="<%=item.starred ? "Unstar app" : "Star app"%>"
+                >
+                  <i class="fa-<%=item.starred ? "solid" : "regular"%> fa-star"></i>
+                  <span><%=item.starred ? "Starred" : "Star"%></span>
+                </button>
                 <button class='btn browse' data-src="<%=item.dev_url%>">
                   <i class="fa-solid fa-code"></i> Dev
                 </button>
@@ -592,11 +1086,6 @@ body.dark aside .current.selected {
                 </div>
               <% } %>
             </div>
-            <!--
-            <div class='spinner'>
-              <i class="fa-solid fa-chevron-right"></i>
-            </div>
-            -->
           </h3>
         </a>
       <% }) %>
@@ -604,11 +1093,8 @@ body.dark aside .current.selected {
   <% } %>
   <% if (notRunning.length > 0) { %>
     <div class='not-running-apps'>
-      <!--
-      <div class='header-label'>Not Running</div>
-      -->
       <% notRunning.forEach((item, index) => { %>
-        <a target="<%=item.target || '_self'%>" href="<%=item.browser_url%>" data-description="<%=item.description%>" data-index="<%=item.index%>" data-name="<%=item.name%>" data-title="<%=item.name%>" data-uri="<%=item.uri%>" data-icon="<%=item.icon%>" data-path="<%=item.path%>"  data-iconpath="<%=item.iconpath ? item.iconpath : ''%>" class='line align-top'>
+        <a target="<%=item.target || '_self'%>" href="<%=item.browser_url%>" data-description="<%=item.description%>" data-index="<%=item.index%>" data-name="<%=item.name%>" data-title="<%=item.name%>" data-uri="<%=item.uri%>" data-icon="<%=item.icon%>" data-path="<%=item.path%>"  data-iconpath="<%=item.iconpath ? item.iconpath : ''%>" data-starred="<%=item.starred ? "1" : "0"%>" data-launch-count-total="<%=item.launch_count_total || 0%>" data-last-launch-at="<%=item.last_launch_at || ''%>" class='line align-top'>
           <h3>
             <div class='item-icon'>
               <% if (item.icon) { %>
@@ -629,6 +1115,15 @@ body.dark aside .current.selected {
               <div class='uri'><%=item.filepath%></div>
               <div class='description'><%=item.description%></div>
               <div class='menu-btns'>
+                <button
+                  class='btn toggle-star <%=item.starred ? "is-starred" : ""%>'
+                  data-app-id="<%=item.uri%>"
+                  data-starred="<%=item.starred ? "1" : "0"%>"
+                  title="<%=item.starred ? "Unstar app" : "Star app"%>"
+                >
+                  <i class="fa-<%=item.starred ? "solid" : "regular"%> fa-star"></i>
+                  <span><%=item.starred ? "Starred" : "Star"%></span>
+                </button>
                 <button class='btn browse' data-src="<%=item.dev_url%>">
                   <i class="fa-solid fa-code"></i> Dev
                 </button>
@@ -669,11 +1164,6 @@ body.dark aside .current.selected {
                 </div>
               <% } %>
             </div>
-            <!--
-            <div class='spinner'>
-              <i class="fa-solid fa-chevron-right"></i>
-            </div>
-            -->
           </h3>
         </a>
       <% }) %>
@@ -684,7 +1174,7 @@ body.dark aside .current.selected {
       <h1>Welcome.</h1>
       <br>
       <div>Get started by installing or creating some pinokio scripts.</div>
-      <a href="/home?mode=explore" class='btn'><i class="fa-solid fa-globe"></i> Community</a>
+      <a href="/home?mode=explore" class='btn'><i class="fa-solid fa-globe"></i> Explore</a>
       <span>&nbsp;or&nbsp;</span>
       <button type='button' class='btn' onclick="(function(btn){ if(btn){ btn.click(); } })(document.getElementById('create-launcher-button'))"><i class="fa-solid fa-wand-magic-sparkles"></i> Create</button>
     </div>
@@ -709,42 +1199,8 @@ body.dark aside .current.selected {
   <div class='content'><%-readme%></div>
 </div>
 <% } %>
-<% if (display.includes("onboarding")) { %>
-<!--
-<div class='container'>
-  <div class='content'>
-    <h2>Quickstart</h2>
-    <div>Install llama</div>
-    <br>
-    <button class='btn' id='llama'>Install</button>
-  </div>
 </div>
--->
-<% } %>
-</div>
-<aside>
-  <div class='btn-tab'>
-    <button type='button' class='btn' id='create-launcher-button'><i class="fa-solid fa-plus"></i><div class='caption'>Create</div></button>
-    <a class='btn' id='explore' href="/home?mode=explore"><i class="fa-solid fa-globe"></i><div class='caption'>Community</div></a>
-  </div>
-  <a href="/home" class='tab selected'><i class='fas fa-laptop-code'></i><div class='caption'>This machine</div></a>
-  <a href="/network" class='tab'><i class="fa-solid fa-wifi"></i><div class='caption'>Local network</div></a>
-  <% if (list.length > 0) { %>
-    <% let brands = { win32: "windows", darwin: "apple", linux: "Linux" } %>
-    <% list.forEach(({ host, name, platform, processes }, index) => { %>
-      <a href="/net/<%=name%>" class='submenu tab'><i class="fa-brands fa-<%=brands[platform]%>"></i><div class='caption'><%=name%> (<%=current_host === host ? 'this machine' : host%>)</div></a>
-    <% }) %>
-  <% } %>
-  <a href="/connect" class='tab'><i class="fa-solid fa-plug"></i><div class='caption'>Login</div></a>
-  <a class='tab' href="<%=portal%>" target="_blank"><i class="fa-solid fa-question"></i><div class='caption'>Help</div></a>
-  <a class='tab' id='genlog' href="/logs"><i class="fa-solid fa-laptop-code"></i><div class='caption'>Logs</div></a>
-  <a class='tab' href="/checkpoints"><i class="fa-solid fa-clock-rotate-left"></i><div class='caption'>Checkpoints</div></a>
-  <a class='tab' href="/screenshots"><i class="fa-solid fa-camera"></i><div class='caption'>Screenshots</div></a>
-  <a class='tab' href="/tools"><i class="fa-solid fa-toolbox"></i><div class='caption'>Installed Tools</div></a>
-  <a class='tab' href="/agents"><i class="fa-solid fa-robot"></i><div class='caption'>Agents</div></a>
-  <a class='tab' href="/home?mode=settings"><i class="fa-solid fa-gear"></i><div class='caption'>Settings</div></a>
-  <%- include('partials/peer_access_points', { peer_access_points, peer_url, peer_qr }) %>
-</aside>
+<%- include('partials/main_sidebar', { selected: 'home', showPeerAccess: !ishome }) %>
 </main>
 <script>
 let paths = location.pathname.split("/").filter(x=>x)
@@ -752,6 +1208,69 @@ var term
 const n = new N()
 let socket = new Socket()
 window.PinokioHomeGuardNavigate = null;
+if (document.querySelector(".home-search-form")) {
+  document.body.classList.add("is-home");
+}
+const escapeModalHtml = (raw = "") => {
+  return String(raw)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("'", "&#39;")
+}
+const bindHeaderPeerAccessPopups = (root = document) => {
+  const links = root.querySelectorAll(".home-apps-header-actions .qr > a")
+  links.forEach((link) => {
+    if (!link || link.dataset.peerAccessBound === "1") {
+      return
+    }
+    link.dataset.peerAccessBound = "1"
+    link.setAttribute("role", "button")
+    if (!link.querySelector(".peer-access-trigger-icon")) {
+      const icon = document.createElement("i")
+      icon.className = "fa-solid fa-qrcode peer-access-trigger-icon"
+      icon.setAttribute("aria-hidden", "true")
+      link.insertBefore(icon, link.firstChild)
+    }
+    link.addEventListener("click", async (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      const qrImg = link.querySelector("img")
+      const captions = link.querySelectorAll(".caption")
+      const label = captions.length > 0 ? String(captions[0].textContent || "").trim() : "Scan to open"
+      const rawUrl = captions.length > 1
+        ? String(captions[captions.length - 1].textContent || "").trim()
+        : String(link.getAttribute("href") || "").trim()
+      const url = rawUrl || String(link.getAttribute("href") || "").trim()
+      const qrSrc = (qrImg && qrImg.getAttribute("src"))
+        ? qrImg.getAttribute("src")
+        : (url ? `/qr?data=${encodeURIComponent(url)}&s=6&m=0` : "")
+      if (!qrSrc) {
+        if (url) {
+          window.open(url, "_blank", "noopener")
+        }
+        return
+      }
+      if (typeof Swal === "undefined" || !Swal || typeof Swal.fire !== "function") {
+        if (url) {
+          window.open(url, "_blank", "noopener")
+        }
+        return
+      }
+      await Swal.fire({
+        title: label || "Scan to open",
+        customClass: {
+          popup: "min-popup",
+          title: "min-title"
+        },
+        showConfirmButton: false,
+        html: `<div class='min-modal'><div><img src="${escapeModalHtml(qrSrc)}" style="width:256px; height:256px; image-rendering: pixelated;"></div>${url ? `<a href="${escapeModalHtml(url)}" target="_blank" rel="noopener">${escapeModalHtml(url)}</a>` : ""}</div>`
+      })
+    })
+  })
+}
+bindHeaderPeerAccessPopups()
 <% if (ishome) { %>
 document.addEventListener("DOMContentLoaded", () => {
   // Run wait_ready for every /home navigation so we only leave when requirements are satisfied
@@ -1072,6 +1591,56 @@ document.querySelector(".requirements").addEventListener("click", (e) => {
 })
 <% } %>
 */
+const HOME_SORT_DEFAULT = "most_used"
+const HOME_SORT_STORAGE_KEY = "pinokio.home.apps.sort"
+const normalizeHomeSortMode = (value) => {
+  const normalized = String(value || "").trim().toLowerCase()
+  if (normalized === "most_used" || normalized === "most-used") {
+    return "most_used"
+  }
+  if (normalized === "last_opened" || normalized === "last-opened") {
+    return "last_opened"
+  }
+  if (normalized === "az" || normalized === "a-z") {
+    return "az"
+  }
+  return HOME_SORT_DEFAULT
+}
+const readStoredHomeSortMode = () => {
+  try {
+    if (!window || !window.localStorage) {
+      return HOME_SORT_DEFAULT
+    }
+    return normalizeHomeSortMode(window.localStorage.getItem(HOME_SORT_STORAGE_KEY))
+  } catch (_) {
+    return HOME_SORT_DEFAULT
+  }
+}
+const persistHomeSortMode = (value) => {
+  const normalized = normalizeHomeSortMode(value)
+  try {
+    if (window && window.localStorage) {
+      window.localStorage.setItem(HOME_SORT_STORAGE_KEY, normalized)
+    }
+  } catch (_) {}
+  return normalized
+}
+const updateSearchParam = (name, value, options = {}) => {
+  const params = new URLSearchParams(location.search)
+  if (typeof value === "string" && value.trim().length > 0) {
+    params.set(name, value)
+  } else {
+    params.delete(name)
+  }
+  const query = params.toString()
+  const nextPath = query ? `${location.pathname}?${query}` : location.pathname
+  if (options && options.replace) {
+    window.history.replaceState({ path: nextPath }, "", nextPath)
+  } else {
+    window.history.pushState({ path: nextPath }, "", nextPath)
+  }
+  return nextPath
+}
 let params = new URLSearchParams(location.search)
 let selected = params.get("selected")
 if (selected) {
@@ -1080,13 +1649,28 @@ if (selected) {
 }
 if (document.querySelector("form input[type=search]")) {
   document.querySelector("form input[type=search]").addEventListener("input", (e) => {
-    let p
-    if (e.target.value && e.target.value.trim().length > 0) {
-      p = location.pathname + "?selected=" + e.target.value
-    } else {
-      p = location.pathname
-    }
-    window.history.pushState({ path: p }, '', p);
+    updateSearchParam("selected", e.target.value || "", { replace: false })
+  })
+}
+const homeSortSelect = document.querySelector("#home-apps-sort-select")
+if (homeSortSelect) {
+  const sortFromQueryRaw = params.get("sort")
+  const hasSortQuery = typeof sortFromQueryRaw === "string" && sortFromQueryRaw.trim().length > 0
+  const initialSort = hasSortQuery
+    ? normalizeHomeSortMode(sortFromQueryRaw)
+    : readStoredHomeSortMode()
+  if (homeSortSelect.value !== initialSort) {
+    homeSortSelect.value = initialSort
+  }
+  persistHomeSortMode(initialSort)
+  if (!hasSortQuery) {
+    updateSearchParam("sort", initialSort, { replace: true })
+  }
+  homeSortSelect.addEventListener("change", (event) => {
+    const nextSort = persistHomeSortMode(event.target.value)
+    event.target.value = nextSort
+    reorderHomeSectionsByPreference(nextSort)
+    updateSearchParam("sort", nextSort, { replace: true })
   })
 }
 <% if (ishome) { %>
@@ -1189,7 +1773,164 @@ const getMenuDimensions = (menu) => {
     height: height || 0
   }
 }
+const parseLineStarSortMeta = (line) => {
+  if (!line) {
+    return {
+      starred: 0,
+      launchCount: 0,
+      lastLaunch: 0,
+      index: Number.MAX_SAFE_INTEGER,
+      name: "",
+    }
+  }
+  const starred = line.getAttribute("data-starred") === "1" ? 1 : 0
+  const launchCount = Number.parseInt(line.getAttribute("data-launch-count-total") || "0", 10)
+  const lastLaunchRaw = line.getAttribute("data-last-launch-at") || ""
+  const lastLaunch = lastLaunchRaw ? (Date.parse(lastLaunchRaw) || 0) : 0
+  const index = Number.parseInt(line.getAttribute("data-index") || String(Number.MAX_SAFE_INTEGER), 10)
+  const name = (line.getAttribute("data-name") || "").toLowerCase()
+  return {
+    starred,
+    launchCount: Number.isFinite(launchCount) ? launchCount : 0,
+    lastLaunch,
+    index: Number.isFinite(index) ? index : Number.MAX_SAFE_INTEGER,
+    name
+  }
+}
+const readCurrentHomeSortMode = () => {
+  const sortSelect = document.querySelector("#home-apps-sort-select")
+  if (sortSelect) {
+    return normalizeHomeSortMode(sortSelect.value)
+  }
+  const currentParams = new URLSearchParams(location.search)
+  return normalizeHomeSortMode(currentParams.get("sort"))
+}
+const compareLinesByPreference = (a, b, sortMode = readCurrentHomeSortMode()) => {
+  const aa = parseLineStarSortMeta(a)
+  const bb = parseLineStarSortMeta(b)
+  if (aa.starred !== bb.starred) {
+    return bb.starred - aa.starred
+  }
+  if (sortMode === "last_opened") {
+    if (aa.lastLaunch !== bb.lastLaunch) {
+      return bb.lastLaunch - aa.lastLaunch
+    }
+    if (aa.launchCount !== bb.launchCount) {
+      return bb.launchCount - aa.launchCount
+    }
+    const byName = aa.name.localeCompare(bb.name)
+    if (byName !== 0) {
+      return byName
+    }
+  } else if (sortMode === "az") {
+    const byName = aa.name.localeCompare(bb.name)
+    if (byName !== 0) {
+      return byName
+    }
+  } else {
+    if (aa.launchCount !== bb.launchCount) {
+      return bb.launchCount - aa.launchCount
+    }
+    if (aa.lastLaunch !== bb.lastLaunch) {
+      return bb.lastLaunch - aa.lastLaunch
+    }
+    const byName = aa.name.localeCompare(bb.name)
+    if (byName !== 0) {
+      return byName
+    }
+  }
+  if (aa.index !== bb.index) {
+    return aa.index - bb.index
+  }
+  return aa.name.localeCompare(bb.name)
+}
+const reorderHomeSectionsByPreference = (sortMode = readCurrentHomeSortMode()) => {
+  const sections = [".running-apps", ".not-running-apps"]
+  for (const selector of sections) {
+    const section = document.querySelector(selector)
+    if (!section) {
+      continue
+    }
+    const lines = Array.from(section.querySelectorAll(":scope > .line"))
+    lines.sort((x, y) => compareLinesByPreference(x, y, sortMode))
+    for (const line of lines) {
+      section.appendChild(line)
+    }
+  }
+}
+if (homeSortSelect) {
+  reorderHomeSectionsByPreference(normalizeHomeSortMode(homeSortSelect.value))
+  if (typeof window.TomSelect === "function" && !homeSortSelect.tomselect) {
+    const sortDropdownParent = homeSortSelect.closest(".home-apps-sort")
+    new TomSelect(homeSortSelect, {
+      create: false,
+      maxItems: 1,
+      allowEmptyOption: false,
+      searchField: [],
+      controlInput: null,
+      dropdownParent: sortDropdownParent || undefined
+    })
+  }
+}
 document.addEventListener("click", async (e) => {
+  if (e.target.classList.contains("toggle-star")) {
+    target = e.target
+  } else {
+    target = e.target.closest(".toggle-star")
+  }
+  if (target) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (target.dataset.pending === "1") {
+      return
+    }
+    const appId = target.getAttribute("data-app-id")
+    if (!appId) {
+      return
+    }
+    const currentlyStarred = target.getAttribute("data-starred") === "1"
+    const nextStarred = !currentlyStarred
+    target.dataset.pending = "1"
+    try {
+      const response = await fetch(`/apps/preferences/${encodeURIComponent(appId)}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ starred: nextStarred })
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok || !payload || !payload.preference) {
+        throw new Error(payload && payload.error ? payload.error : "Failed to update app star")
+      }
+      target.setAttribute("data-starred", payload.preference.starred ? "1" : "0")
+      if (payload.preference.starred) {
+        target.classList.add("is-starred")
+      } else {
+        target.classList.remove("is-starred")
+      }
+      const icon = target.querySelector("i")
+      if (icon) {
+        icon.className = payload.preference.starred ? "fa-solid fa-star" : "fa-regular fa-star"
+      }
+      const label = target.querySelector("span")
+      if (label) {
+        label.textContent = payload.preference.starred ? "Starred" : "Star"
+      }
+      const line = target.closest(".line")
+      if (line) {
+        line.setAttribute("data-starred", payload.preference.starred ? "1" : "0")
+        line.setAttribute("data-launch-count-total", String(payload.preference.launch_count_total || 0))
+        line.setAttribute("data-last-launch-at", payload.preference.last_launch_at || "")
+      }
+      reorderHomeSectionsByPreference()
+    } catch (error) {
+      alert(error && error.message ? error.message : "Failed to update app star")
+    } finally {
+      delete target.dataset.pending
+    }
+    return
+  }
   if (e.target.classList.contains("shutdown")) {
     target = e.target
   } else {

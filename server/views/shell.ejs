@@ -155,7 +155,7 @@ header {
 }
 */
 #del-bin {
-  color: rgba(127, 91, 243, 0.9);
+  color: royalblue;
   cursor: pointer;
   font-weight: bold;
   padding: 0 5px;
@@ -178,7 +178,7 @@ body.frozen {
   padding: 0 10px;
 }
 #status-window strong {
-  color: rgba(127, 91, 243, 0.9);
+  color: royalblue;
 }
 #status-window b {
   color: black;
@@ -200,7 +200,7 @@ body.dark #status-window b {
 #progress-bar {
   width: 0%;
   height: 100%;
-  background: rgba(127, 91, 243, 0.9);
+  background: royalblue;
   transition: width 0.2s;
 }
 @media only screen and (max-width: 768px) {
@@ -208,11 +208,28 @@ body.dark #status-window b {
     flex-direction: column !important;
   }
 }
+html.agent-shell-hide-run-controls .runner .play-btn,
+html.agent-shell-hide-run-controls .runner .starting-btn {
+  display: none !important;
+}
 </style>
 <link href="/terminal.css" rel="stylesheet"/>
 <script>
 let shell_id
 let lastNotifiedShellId = null
+const INITIAL_MESSAGE = <% if (message) { %><%-JSON.stringify(message)%><% } else { %>null<% } %>
+const RESTART_MESSAGE = <% if (restart_message) { %><%-JSON.stringify(restart_message)%><% } else { %>null<% } %>
+const pendingStopRequestIds = []
+const flushStopAcknowledgements = (ok) => {
+  while (pendingStopRequestIds.length > 0) {
+    const requestId = pendingStopRequestIds.shift()
+    window.parent.postMessage({
+      action: "pinokio:stop-shell-result",
+      requestId,
+      ok: Boolean(ok)
+    }, "*")
+  }
+}
 const formatUploadNotification = (files, sessionId, shellEmit, shellEmitAttempted) => {
   if (!Array.isArray(files) || files.length === 0) {
     return 'Upload complete (no files reported)'
@@ -277,6 +294,86 @@ const notifyShellSession = (id) => {
     shellId: id
   })
 }
+const parseTerminalIdFromShellRef = (value) => {
+  if (typeof value !== "string" || value.length === 0) {
+    return ""
+  }
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return ""
+  }
+  const queryIndex = trimmed.indexOf("?")
+  if (queryIndex < 0) {
+    return ""
+  }
+  try {
+    const params = new URLSearchParams(trimmed.slice(queryIndex + 1))
+    const terminalId = params.get("terminal_id")
+    return typeof terminalId === "string" ? terminalId.trim() : ""
+  } catch (_) {
+    return ""
+  }
+}
+const resolveManagedTerminalId = () => {
+  try {
+    const params = new URLSearchParams(window.location.search || "")
+    const queryTerminalId = params.get("terminal_id")
+    if (typeof queryTerminalId === "string" && queryTerminalId.trim().length > 0) {
+      return queryTerminalId.trim()
+    }
+  } catch (_) {}
+  return parseTerminalIdFromShellRef(shell_id)
+}
+const isAgentManagedTerminalId = (terminalId) => {
+  if (typeof terminalId !== "string") {
+    return false
+  }
+  const normalized = terminalId.trim().toLowerCase()
+  if (!normalized) {
+    return false
+  }
+  const provider = normalized.split(":")[0]
+  return provider === "codex" || provider === "claude" || provider === "gemini"
+}
+const hideLocalRunControls = isAgentManagedTerminalId(resolveManagedTerminalId())
+if (hideLocalRunControls && document && document.documentElement) {
+  document.documentElement.classList.add("agent-shell-hide-run-controls")
+}
+const SHELL_IDLE_WINDOW_MS = 1200
+let shellIdleTimer = null
+let shellIsLive = false
+const clearShellIdleTimer = () => {
+  if (shellIdleTimer) {
+    clearTimeout(shellIdleTimer)
+    shellIdleTimer = null
+  }
+}
+const markShellDisconnected = () => {
+  shellIsLive = false
+  clearShellIdleTimer()
+}
+const markShellActivity = () => {
+  if (!shellIsLive) {
+    return
+  }
+  clearShellIdleTimer()
+  shellIdleTimer = setTimeout(() => {
+    if (!shellIsLive) {
+      return
+    }
+    postMessageToAncestors({
+      type: "idle",
+      frame: window.name || null
+    })
+  }, SHELL_IDLE_WINDOW_MS)
+}
+const markShellLive = () => {
+  shellIsLive = true
+  markShellActivity()
+}
+window.addEventListener("beforeunload", () => {
+  markShellDisconnected()
+})
 function buildBinaryRpcPayload(rpc, fileEntries) {
   const metadata = {
     rpc,
@@ -316,7 +413,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   class RPC {
     constructor() {
       this.socket = new Socket()
-      this.resizeSync = window.PinokioResizeSync.create({
+    this.resizeSync = window.PinokioResizeSync.create({
         socket: this.socket,
         getShellId: () => shell_id
       })
@@ -324,11 +421,29 @@ document.addEventListener("DOMContentLoaded", async () => {
       this.uploadContext = {
         cwd: "~" + location.pathname
       }
+      this.currentId = <% if (id) { %><%-JSON.stringify(id)%><% } else { %>null<% } %>
+      this.hasRunOnce = <% if (running) { %>true<% } else { %>false<% } %>
+      this.pendingInput = []
       this.inputBuffer = ""
       this.inputTracker = window.TerminalInputTracker ? new window.TerminalInputTracker({
         getFrameName: () => window.name || null,
         getWindow: () => window
       }) : null
+    }
+    flushPendingInput() {
+      if (!this.socket || !shell_id) {
+        return
+      }
+      while (this.pendingInput.length > 0) {
+        const chunk = this.pendingInput.shift()
+        if (typeof chunk !== "string" || chunk.length === 0) {
+          continue
+        }
+        this.socket.run({
+          key: chunk,
+          id: shell_id
+        })
+      }
     }
     resetInputBuffer() {
       if (this.inputTracker) {
@@ -373,6 +488,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         this.inputTracker.submit(line)
         return
       }
+      markShellActivity()
       const safeLine = sanitizePreviewLine(line || "")
       const preview = safeLine.trim()
       const limit = 200
@@ -432,18 +548,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         })
       })
     }
-    async start(mode) {
+    async start(mode, options = {}) {
 //        await this.save()
         this.socket.close()
 
         let query = Object.fromEntries(new URLSearchParams(location.search))
+        const manualRestart = Boolean(options && options.manualRestart)
+        const isListenMode = mode === "listen"
+        const messageToRun = isListenMode
+          ? INITIAL_MESSAGE
+          : (this.hasRunOnce ? (RESTART_MESSAGE || INITIAL_MESSAGE) : INITIAL_MESSAGE)
+        if (!isListenMode) {
+          this.hasRunOnce = true
+        }
         let firstPacketReceived = false
-        this.socket.run({
+        const payload = {
           //method: "kernel.bin.shell_start",
           method: "kernel.bin.exec",
-          <% if (message) { %>
-            message: "<%-message%>",
-          <% } %>
           <% if (venv) { %>
             venv: "<%-JSON.stringify(venv).slice(1, -1)%>",
           <% } %>
@@ -468,21 +589,29 @@ document.addEventListener("DOMContentLoaded", async () => {
           <% if (conda) { %>
           conda: <%-JSON.stringify(conda)%>,
           <% } %>
-          id: "<%=id%>",
+          mode: (mode ? mode : "run"),
+          id: <%-JSON.stringify(id)%>,
           //path: "<%=cwd%>",
           path: "<%-JSON.stringify(cwd).slice(1, -1)%>",
           client: {
             cols: this.term.cols,
             rows: this.term.rows,
           }
-        }, async (packet) => {
+        }
+        if (messageToRun) {
+          payload.message = messageToRun
+        }
+        this.socket.run(payload, async (packet) => {
           if (!firstPacketReceived) {
             refreshParent({
-              type: "start"
+              type: "start",
+              manual_restart: manualRestart
             })
+            markShellLive()
             firstPacketReceived = true
           }
           if (packet.type === 'start') {
+            markShellLive()
             console.log("refreshParent", packet)
             refreshParent(packet)
             document.querySelector(".play-btn").classList.add("hidden")
@@ -516,11 +645,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 //              </div>`
             }
           } else if (packet.type === "stream") {
+            markShellActivity()
             refreshParent(packet)
             // set the current shell id
             if (packet.data.id) {
               const previousShellId = shell_id
               shell_id = packet.data.id
+              if (!previousShellId) {
+                this.flushPendingInput()
+              }
               if (!previousShellId) {
                 this.resizeSync.sendInitial()
               }
@@ -537,6 +670,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               this.write("\r\n")
             }
             if (packet.data.type === "shell.kill") {
+              flushStopAcknowledgements(true)
               this.socket.close()
             }
             if (packet.data.type === "emit2") {
@@ -555,6 +689,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             document.querySelector(".starting-btn").classList.add("hidden")
             document.querySelector(".stop-btn").classList.remove("hidden")
           } else if (packet.type === 'disconnect') {
+            markShellDisconnected()
             console.log("refreshParent", packet)
             refreshParent(packet)
             this.term.write("\r\nDisconnected...\r\n")
@@ -564,11 +699,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             document.querySelector(".stop-btn").classList.add("hidden")
             this.resizeSync.reset()
           } else if (packet.type === 'connect') {
+            markShellLive()
             console.log("refreshParent", packet)
             refreshParent(packet)
             if (packet.data) {
               if (packet.data.shell) {
                 shell_id = packet.data.shell
+                this.flushPendingInput()
                 notifyShellSession(shell_id)
               }
               if (shell_id) {
@@ -719,6 +856,12 @@ document.addEventListener("DOMContentLoaded", async () => {
               }
               n.Noty(payload)
             }
+          } else if (packet.type === "restart") {
+            try {
+              if (window.parent && window.parent !== window && typeof window.parent.postMessage === "function") {
+                window.parent.postMessage(packet, "*")
+              }
+            } catch (_) {}
           } else if (packet.type === "result") {
 //            this.socket.close()
           } else if (packet.type === "info") {
@@ -834,6 +977,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 //          let pageBottom = document.querySelector("#end")
 //          pageBottom.scrollIntoView()
         }).then(() => {
+          markShellDisconnected()
           refreshParent({
             type: "disconnect"
           })
@@ -871,8 +1015,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           <% } %>
         })
     }
-    async run (mode) {
+    async run (mode, options = {}) {
       this.mode = (mode ? mode : "run")
+      markShellDisconnected()
       
 //      if (dirty) {
 //        await this.save()
@@ -886,7 +1031,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       <% } else { %>
       await this.createTerm(xtermTheme.Tomorrow)
       <% } %>
-      await this.start(mode)
+      await this.start(mode, options)
     }
     async uploadFiles(files, overlay) {
       const localFiles = Array.isArray(files) ? files : []
@@ -1190,7 +1335,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         let config = {
           scrollback: 9999999,
-          fontSize: 14,
+          fontSize: 12,
           fontFamily: 'monospace',
           theme,
           //theme: xtermTheme.FrontEndDelight
@@ -1571,11 +1716,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         //term.resize(cols, rows);
 
         term.onData((data) => {
-          if (this.socket && shell_id) {
-            this.socket.run({
-              key: data,
-              id: shell_id
-            })
+          const targetId = shell_id || this.currentId
+          if (this.socket && targetId) {
+            if (shell_id) {
+              this.socket.run({
+                key: data,
+                id: targetId
+              })
+            } else {
+              this.pendingInput.push(data)
+            }
           }
           if (typeof window.processTerminalInputData === "function") {
             window.processTerminalInputData(data, {
@@ -1636,7 +1786,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.querySelector(".play-btn").addEventListener("click", async (e) => {
     document.querySelector(".play-btn").classList.add("hidden")
     document.querySelector(".starting-btn").classList.remove("hidden")
-    await rpc.run()
+    await rpc.run("run", { manualRestart: true })
     document.querySelector(".play-btn").classList.remove("hidden")
     document.querySelector(".stop-btn").classList.add("hidden")
   })
@@ -1661,9 +1811,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   <% } %>
 
   window.addEventListener('message', function(event) {
-    console.log("Message received from the parent: ", event.data); // Message received from parent
+    const data = event && event.data ? event.data : {}
+    if (data.action === "pinokio:request-stop-shell") {
+      pendingStopRequestIds.push(data.requestId || null)
+      const stopButton = document.querySelector(".stop-btn")
+      const isStopVisible = Boolean(stopButton && !stopButton.classList.contains("hidden"))
+      // If there is no active stop control or no shell id, treat it as already stopped.
+      if (!isStopVisible || !shell_id) {
+        flushStopAcknowledgements(true)
+        return
+      }
+      try {
+        rpc.stop()
+      } catch (error) {
+        flushStopAcknowledgements(false)
+      }
+      return
+    }
     //  "foreground" message triggers a redraw so buffered output appears after backgrounding.
-    if (event.data && event.data.action === "foreground") {
+    if (data.action === "foreground") {
       if (rpc.dirty && rpc.term) {
         const endRow = Math.max(rpc.term.rows - 1, 0)
         rpc.term.refresh(0, endRow)

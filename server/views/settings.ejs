@@ -145,7 +145,7 @@ body.dark .item select {
 }
 .item .title {
   text-decoration: none;
-  color: rgba(127, 91, 243, 0.9);
+  color: royalblue;
 }
 .item .col {
   padding: 10px;
@@ -307,6 +307,57 @@ body.dark .keys pre {
   margin: 20px 0;
   background: rgba(0,0,100,0.04) !important;
 }
+.debug-path-form {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.debug-path-form input[type=text] {
+  width: 100%;
+  min-width: 0;
+}
+.debug-path-result {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(0,0,100,0.04);
+  font-family: monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+body.dark .debug-path-result {
+  background: rgba(255,255,255,0.06);
+}
+.debug-path-result.error {
+  color: #bf411d;
+}
+.debug-shell-controls {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.debug-shell-controls select {
+  width: 100%;
+  min-width: 0;
+}
+.debug-shell-env {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(0,0,100,0.04);
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+body.dark .debug-shell-env {
+  background: rgba(255,255,255,0.06);
+}
 .swal2-actions {
   justify-content: center !important;
 }
@@ -329,7 +380,7 @@ body.dark aside .tab {
   color: white;
 }
 body.dark aside .tab:hover, aside .tab:hover {
-  color: rgba(127, 91, 243, 0.9) !important;
+  color: royalblue !important;
   opacity: 1;
 }
 aside .tab {
@@ -618,34 +669,53 @@ document.addEventListener('DOMContentLoaded', function() {
         <br>
         <a class='btn' href="/env"><i class="fa-regular fa-pen-to-square"></i> Edit ENVIRONMENT</a>
       </div>
+      <div class='item'>
+        <div>Test and debug indexed app search results used by pterm and agent workflows.</div>
+        <br>
+        <a class='btn' href="/apps/search/test"><i class="fa-solid fa-magnifying-glass"></i> Open App Search Test</a>
+      </div>
     </div>
     <hr/>
   <% } %>
-</div>
-</div>
-<aside>
-  <div class='btn-tab'>
-    <button type='button' class='btn' id='create-launcher-button'><i class="fa-solid fa-plus"></i><div class='caption'>Create</div></button>
-    <a class='btn' id='explore' href="/home?mode=explore"><i class="fa-solid fa-globe"></i><div class='caption'>Community</div></a>
+  <div class='docs'>
+    <h1>Docs</h1>
+    <div class='item'>
+      <div>Download SKILL.md guides used by Pinokio agents.</div>
+      <br>
+      <div>
+        <a class='btn' href="/settings/docs/pinokio/download"><i class="fa-solid fa-download"></i> Download pinokio SKILL.md</a>
+        <a class='btn' href="/settings/docs/gepeto/download"><i class="fa-solid fa-download"></i> Download gepeto SKILL.md</a>
+      </div>
+    </div>
   </div>
-  <a href="/home" class='tab'><i class='fas fa-laptop-code'></i><div class='caption'>This machine</div></a>
-  <a href="/network" class='tab'><i class="fa-solid fa-wifi"></i><div class='caption'>Local network</div></a>
-  <% if (list.length > 0) { %>
-    <% let brands = { win32: "windows", darwin: "apple", linux: "Linux" } %>
-    <% list.forEach(({ host, name, platform, processes }, index) => { %>
-      <a href="/net/<%=name%>" class='submenu tab'><i class="fa-brands fa-<%=brands[platform]%>"></i><div class='caption'><%=name%> (<%=current_host === host ? 'this machine' : host%>)</div></a>
-    <% }) %>
-  <% } %>
-  <a href="/connect" class='tab'><i class="fa-solid fa-plug"></i><div class='caption'>Login</div></a>
-  <a class='tab' href="<%=portal%>" target="_blank"><i class="fa-solid fa-question"></i><div class='caption'>Help</div></a>
-  <a class='tab' id='genlog' href="/logs"><i class="fa-solid fa-laptop-code"></i><div class='caption'>Logs</div></a>
-  <a class='tab' href="/checkpoints"><i class="fa-solid fa-clock-rotate-left"></i><div class='caption'>Checkpoints</div></a>
-  <a class='tab' href="/screenshots"><i class="fa-solid fa-camera"></i><div class='caption'>Screenshots</div></a>
-  <a class='tab' href="/tools"><i class="fa-solid fa-toolbox"></i><div class='caption'>Installed Tools</div></a>
-  <a class='tab' href="/agents"><i class="fa-solid fa-robot"></i><div class='caption'>Agents</div></a>
-  <a class='tab selected' href="/home?mode=settings"><i class="fa-solid fa-gear"></i><div class='caption'>Settings</div></a>
-  <%- include('partials/peer_access_points', { peer_access_points, peer_url, peer_qr }) %>
-</aside>
+  <hr/>
+  <div class='debug'>
+    <h1>Debug</h1>
+    <div class='item'>
+      <label>Command Path</label>
+      <div class='d'>Find the resolved path for a command name using <code>/pinokio/path/:cmd</code>.</div>
+      <form id='debug-path-form' class='debug-path-form'>
+        <input id='debug-path-cmd' type='text' placeholder='e.g. node, git, python3' autocomplete='off'>
+        <button id='debug-path-submit' class='btn' type='submit'><i class="fa-solid fa-magnifying-glass"></i> Lookup</button>
+      </form>
+      <div id='debug-path-result' class='debug-path-result hidden'></div>
+    </div>
+    <div class='item'>
+      <label>Shell Environment</label>
+      <div class='d'>Select a running shell to inspect its current environment variables.</div>
+      <div class='debug-shell-controls'>
+        <select id='debug-shell-select'>
+          <option value="">No running shells</option>
+        </select>
+        <button id='debug-shell-refresh' class='btn' type='button'><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+      </div>
+      <div id='debug-shell-result' class='debug-path-result hidden'></div>
+      <pre id='debug-shell-env' class='debug-shell-env hidden'></pre>
+    </div>
+  </div>
+</div>
+</div>
+<%- include('partials/main_sidebar', { selected: 'settings' }) %>
 </main>
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
@@ -703,6 +773,213 @@ document.addEventListener("DOMContentLoaded", async () => {
         break
       }
     }
+  }
+  const debugPathForm = document.querySelector("#debug-path-form")
+  if (debugPathForm) {
+    const debugPathInput = document.querySelector("#debug-path-cmd")
+    const debugPathSubmit = document.querySelector("#debug-path-submit")
+    const debugPathResult = document.querySelector("#debug-path-result")
+    const showDebugPathResult = (message, hasError = false) => {
+      debugPathResult.textContent = message
+      debugPathResult.classList.remove("hidden")
+      if (hasError) {
+        debugPathResult.classList.add("error")
+      } else {
+        debugPathResult.classList.remove("error")
+      }
+    }
+    debugPathForm.addEventListener("submit", async (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const cmd = debugPathInput.value.trim()
+      if (!cmd) {
+        showDebugPathResult("Enter a command name first.", true)
+        debugPathInput.focus()
+        return
+      }
+      if (cmd.includes("/") || cmd.includes("\\") || /\s/.test(cmd)) {
+        showDebugPathResult("Use only a single command name (no spaces or slashes).", true)
+        return
+      }
+      debugPathSubmit.setAttribute("disabled", "disabled")
+      showDebugPathResult(`Looking up ${cmd}...`)
+      try {
+        const response = await fetch(`/pinokio/path/${encodeURIComponent(cmd)}`)
+        const payload = await response.json().catch(() => {
+          return {}
+        })
+        if (!response.ok) {
+          if (payload.error) {
+            showDebugPathResult(`${cmd}: ${payload.error}`, true)
+          } else {
+            showDebugPathResult(`${cmd}: Request failed (${response.status})`, true)
+          }
+          return
+        }
+        if (payload.path) {
+          showDebugPathResult(`${cmd}: ${payload.path}`)
+        } else {
+          showDebugPathResult(`${cmd}: Not found`, true)
+        }
+      } catch (err) {
+        showDebugPathResult(`Lookup failed: ${err && err.message ? err.message : "Unknown error"}`, true)
+      } finally {
+        debugPathSubmit.removeAttribute("disabled")
+      }
+    })
+  }
+  const debugShellSelect = document.querySelector("#debug-shell-select")
+  if (debugShellSelect) {
+    const debugShellRefresh = document.querySelector("#debug-shell-refresh")
+    const debugShellResult = document.querySelector("#debug-shell-result")
+    const debugShellEnv = document.querySelector("#debug-shell-env")
+    const setDebugShellStatus = (message, hasError = false) => {
+      debugShellResult.textContent = message
+      debugShellResult.classList.remove("hidden")
+      if (hasError) {
+        debugShellResult.classList.add("error")
+      } else {
+        debugShellResult.classList.remove("error")
+      }
+    }
+    const hideDebugShellEnv = () => {
+      debugShellEnv.classList.add("hidden")
+      debugShellEnv.textContent = ""
+    }
+    const shortenDebugShellText = (text, maxLength) => {
+      if (!text || text.length <= maxLength) {
+        return text
+      }
+      return `${text.slice(0, maxLength - 3)}...`
+    }
+    const summarizeShellMessage = (shell) => {
+      if (!shell) {
+        return "(interactive)"
+      }
+      const sourceMessage = shell.source_message
+      if (typeof sourceMessage === "string") {
+        const trimmed = sourceMessage.trim()
+        if (trimmed.length > 0) {
+          return trimmed
+        }
+      } else if (Array.isArray(sourceMessage)) {
+        const lines = sourceMessage
+          .map((line) => {
+            if (typeof line === "string") {
+              return line.trim()
+            }
+            return line == null ? "" : String(line)
+          })
+          .filter((line) => {
+            return line.length > 0
+          })
+        if (lines.length > 0) {
+          return lines.join(" ; ")
+        }
+      } else if (sourceMessage && typeof sourceMessage === "object") {
+        try {
+          return JSON.stringify(sourceMessage)
+        } catch (err) {
+          return String(sourceMessage)
+        }
+      }
+      if (shell && typeof shell.cmd === "string" && shell.cmd.trim().length > 0) {
+        return shell.cmd.trim()
+      }
+      return "(interactive)"
+    }
+    const shellLabel = (shell, index) => {
+      const cwd = shell && shell.path ? shortenDebugShellText(shell.path, 55) : "(no cwd)"
+      const message = shortenDebugShellText(summarizeShellMessage(shell), 70)
+      return `${index + 1}. ${cwd} | ${message}`
+    }
+    const loadShellEnv = async (shellId) => {
+      if (!shellId) {
+        hideDebugShellEnv()
+        setDebugShellStatus("Select a shell first.", true)
+        return
+      }
+      setDebugShellStatus(`Loading environment from ${shellId}...`)
+      try {
+        const response = await fetch(`/pinokio/debug/shell/env?id=${encodeURIComponent(shellId)}`)
+        const payload = await response.json().catch(() => {
+          return {}
+        })
+        if (!response.ok) {
+          hideDebugShellEnv()
+          if (payload.error) {
+            setDebugShellStatus(payload.error, true)
+          } else {
+            setDebugShellStatus(`Request failed (${response.status})`, true)
+          }
+          return
+        }
+        const env = payload && payload.env && typeof payload.env === "object" ? payload.env : {}
+        const keys = Object.keys(env)
+        const lines = keys.map((key) => {
+          return `${key}=${env[key]}`
+        })
+        debugShellEnv.textContent = lines.length > 0 ? lines.join("\n") : "(No environment variables)"
+        debugShellEnv.classList.remove("hidden")
+        const resolvedShell = payload && payload.shell && payload.shell.id ? payload.shell.id : shellId
+        setDebugShellStatus(`${resolvedShell} (${keys.length} vars)`)
+      } catch (err) {
+        hideDebugShellEnv()
+        setDebugShellStatus(`Failed to load shell environment: ${err && err.message ? err.message : "Unknown error"}`, true)
+      }
+    }
+    const refreshShellList = async () => {
+      const previousId = debugShellSelect.value
+      debugShellRefresh.setAttribute("disabled", "disabled")
+      setDebugShellStatus("Loading running shells...")
+      try {
+        const response = await fetch("/info/shells")
+        const payload = await response.json().catch(() => {
+          return []
+        })
+        if (!response.ok || !Array.isArray(payload)) {
+          throw new Error(`Request failed (${response.status})`)
+        }
+        const runningShells = payload.filter((shell) => {
+          return shell && shell.id && !shell.done
+        })
+        debugShellSelect.innerHTML = ""
+        if (runningShells.length === 0) {
+          const option = document.createElement("option")
+          option.value = ""
+          option.textContent = "No running shells"
+          debugShellSelect.appendChild(option)
+          hideDebugShellEnv()
+          setDebugShellStatus("No running shells found.")
+          return
+        }
+        runningShells.forEach((shell, index) => {
+          const option = document.createElement("option")
+          option.value = shell.id
+          option.textContent = shellLabel(shell, index)
+          debugShellSelect.appendChild(option)
+        })
+        const selectedId = runningShells.find((shell) => {
+          return shell.id === previousId
+        }) ? previousId : runningShells[0].id
+        debugShellSelect.value = selectedId
+        await loadShellEnv(selectedId)
+      } catch (err) {
+        hideDebugShellEnv()
+        setDebugShellStatus(`Failed to load shells: ${err && err.message ? err.message : "Unknown error"}`, true)
+      } finally {
+        debugShellRefresh.removeAttribute("disabled")
+      }
+    }
+    debugShellRefresh.addEventListener("click", async (e) => {
+      e.preventDefault()
+      await refreshShellList()
+    })
+    debugShellSelect.addEventListener("change", async () => {
+      const shellId = debugShellSelect.value
+      await loadShellEnv(shellId)
+    })
+    await refreshShellList()
   }
   <% if (locals.bin) { %>
     document.querySelector("#del-bin").addEventListener("click", async (e) => {

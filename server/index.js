@@ -27,6 +27,7 @@ const crypto = require('crypto')
 const system = require('systeminformation')
 const serveIndex = require('./serveIndex')
 const registerFileRoutes = require('./routes/files')
+const registerAppRoutes = require('./routes/apps')
 const Git = require("../kernel/git")
 const TerminalApi = require('../kernel/api/terminal')
 
@@ -63,11 +64,77 @@ const Info = require("../kernel/info")
 const WorkspaceStatusManager = require("../kernel/workspace_status")
 
 const Setup = require("../kernel/bin/setup")
+const { createTerminalSessionHelpers } = require("./lib/terminal_session_helpers")
+const { createTerminalGitResetHandler } = require("./lib/terminal_git_reset")
+const { createDesktopEventRouter } = require("./lib/desktop_event_router")
+const { createInjectRouter, normalizeInjectHrefList } = require("./lib/inject_router")
+const AppRegistryService = require("./lib/app_registry")
+const AppLogService = require("./lib/app_logs")
+const AppSearchService = require("./lib/app_search")
+const AppPreferencesService = require("./lib/app_preferences")
 
-    function normalize(str) {
-      if (!str) return '';
-      return (str.endsWith('\n') ? str : str + '\n').replace(/\r\n/g, '\n');
+function normalize(str) {
+  if (!str) return '';
+  return (str.endsWith('\n') ? str : str + '\n').replace(/\r\n/g, '\n');
+}
+
+function cloneWithFunctionRefs(value, seen = new WeakMap()) {
+  if (value === null || value === undefined) {
+    return value
+  }
+  const valueType = typeof value
+  if (valueType !== "object") {
+    return value
+  }
+  if (seen.has(value)) {
+    return seen.get(value)
+  }
+  if (Array.isArray(value)) {
+    const arr = []
+    seen.set(value, arr)
+    for (const item of value) {
+      arr.push(cloneWithFunctionRefs(item, seen))
     }
+    return arr
+  }
+  if (value instanceof Date) {
+    return new Date(value.getTime())
+  }
+  if (value instanceof RegExp) {
+    return new RegExp(value)
+  }
+  if (value instanceof Map) {
+    const map = new Map()
+    seen.set(value, map)
+    for (const [key, entry] of value.entries()) {
+      map.set(cloneWithFunctionRefs(key, seen), cloneWithFunctionRefs(entry, seen))
+    }
+    return map
+  }
+  if (value instanceof Set) {
+    const set = new Set()
+    seen.set(value, set)
+    for (const entry of value.values()) {
+      set.add(cloneWithFunctionRefs(entry, seen))
+    }
+    return set
+  }
+  const clone = {}
+  seen.set(value, clone)
+  for (const key of Object.keys(value)) {
+    const entry = value[key]
+    clone[key] = typeof entry === "function" ? entry : cloneWithFunctionRefs(entry, seen)
+  }
+  return clone
+}
+
+function safeStructuredClone(value) {
+  try {
+    return structuredClone(value)
+  } catch (error) {
+    return cloneWithFunctionRefs(value)
+  }
+}
 
 class Server {
   constructor(config) {
@@ -132,6 +199,16 @@ class Server {
         }
       },
     })
+    this.appRegistry = new AppRegistryService({ kernel: this.kernel })
+    this.appPreferences = new AppPreferencesService({ kernel: this.kernel })
+    this.appLogs = new AppLogService({ registry: this.appRegistry })
+    this.appSearch = new AppSearchService({
+      kernel: this.kernel,
+      registry: this.appRegistry,
+      preferences: this.appPreferences
+    })
+    this.desktopEventRouter = createDesktopEventRouter({ kernel: this.kernel })
+    this.injectRouter = createInjectRouter({ kernel: this.kernel })
 
     // sometimes the C:\Windows\System32 is not in PATH, need to add
     let platform = os.platform()
@@ -400,7 +477,7 @@ class Server {
                 }
                 for(let running_id in this.kernel.api.running) {
                   if (matchesRunningEntry(running_id)) {
-                    let obj2 = structuredClone(obj)
+                    let obj2 = safeStructuredClone(obj)
                     obj2.running = true
                     obj2.display = "indent"
 
@@ -473,7 +550,7 @@ class Server {
                 running_dynamic.push(obj)
               } else {
                 activeShells.forEach((shellEntry) => {
-                  const clone = structuredClone(obj)
+                  const clone = safeStructuredClone(obj)
                   clone.running = true
                   clone.display = "indent"
                   clone.shell_id = shellEntry.id
@@ -533,7 +610,8 @@ class Server {
     }
     return mem
   }
-  getItems(items, meta, p) {
+  getItems(items, meta, p, preferenceMap = null) {
+    const preferences = preferenceMap instanceof Map ? preferenceMap : null
     return items.map((x) => {
       let name
       let description
@@ -585,6 +663,16 @@ class Server {
 
       let dns = this.kernel.pinokio_configs[x.name].dns
       let routes = dns["@"]
+      const preference = preferences ? (preferences.get(x.name) || null) : null
+      const launchCountTotal = preference
+        ? Math.max(0, Number.parseInt(String(preference.launch_count_total || 0), 10) || 0)
+        : 0
+      const launchCountPterm = preference
+        ? Math.max(0, Number.parseInt(String(preference.launch_count_pterm || 0), 10) || 0)
+        : 0
+      const launchCountUi = preference
+        ? Math.max(0, Number.parseInt(String(preference.launch_count_ui || 0), 10) || 0)
+        : 0
       return {
         filepath: this.kernel.path("api", x.name),
         icon,
@@ -610,6 +698,13 @@ class Server {
         view_url,
         review_url,
         files_url,
+        starred: Boolean(preference && preference.starred),
+        starred_at: preference && preference.starred_at ? preference.starred_at : null,
+        last_launch_at: preference && preference.last_launch_at ? preference.last_launch_at : null,
+        last_launch_source: preference && preference.last_launch_source ? preference.last_launch_source : "unknown",
+        launch_count_total: launchCountTotal,
+        launch_count_pterm: launchCountPterm,
+        launch_count_ui: launchCountUi
       }
     })
   }
@@ -1003,10 +1098,10 @@ class Server {
     let current_urls = await this.current_urls(req.originalUrl.slice(1))
 
     let plugin_menu = null
-    let plugin_config = structuredClone(this.kernel.plugin.config)
+    let plugin_config = safeStructuredClone(this.kernel.plugin.config)
     let plugin = await this.getPlugin(req, plugin_config, name)
     if (plugin && plugin.menu && Array.isArray(plugin.menu)) {
-      plugin = structuredClone(plugin)
+      plugin = safeStructuredClone(plugin)
       let default_plugin_query
       if (req.query) {
         default_plugin_query = req.query
@@ -1422,7 +1517,7 @@ class Server {
         stdout = await new Promise((resolve) => {
           execFile(
             'git',
-            ['status', '--porcelain=v1', '--untracked-files=all'],
+            ['-c', 'core.quotePath=false', 'status', '--porcelain=v1', '--untracked-files=all'],
             {
               cwd: dir,
               env,
@@ -1455,13 +1550,7 @@ class Server {
           continue
         }
         let rest = line.slice(3)
-        let filepath
-        const renameIdx = rest.indexOf(' -> ')
-        if (renameIdx !== -1) {
-          filepath = rest.slice(renameIdx + 4)
-        } else {
-          filepath = rest
-        }
+        const filepath = this.extractGitStatusFilePath(rest)
         if (!filepath) {
           continue
         }
@@ -1534,6 +1623,598 @@ class Server {
         git_fork_url: forkUrl,
         git_push_url: pushUrl,
       }
+  }
+  normalizeGitRelativePath(value) {
+    if (typeof value !== "string") {
+      return ""
+    }
+    return value.replace(/\\/g, "/").replace(/\/+/g, "/")
+  }
+  decodeGitQuotedPath(value) {
+    if (typeof value !== "string") {
+      return ""
+    }
+    const trimmed = value.trim()
+    if (!(trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2)) {
+      return value
+    }
+    const source = trimmed.slice(1, -1)
+    const bytes = []
+    for (let i = 0; i < source.length; i++) {
+      const ch = source[i]
+      if (ch !== "\\") {
+        bytes.push(...Buffer.from(ch, "utf8"))
+        continue
+      }
+      if (i + 1 >= source.length) {
+        bytes.push(92)
+        continue
+      }
+      const octal = source.slice(i + 1, i + 4)
+      if (/^[0-7]{3}$/.test(octal)) {
+        bytes.push(parseInt(octal, 8))
+        i += 3
+        continue
+      }
+      const esc = source[i + 1]
+      if (esc === "n") {
+        bytes.push(10)
+      } else if (esc === "r") {
+        bytes.push(13)
+      } else if (esc === "t") {
+        bytes.push(9)
+      } else if (esc === '"' || esc === "\\") {
+        bytes.push(esc.charCodeAt(0))
+      } else {
+        bytes.push(...Buffer.from(esc, "utf8"))
+      }
+      i += 1
+    }
+    try {
+      return Buffer.from(bytes).toString("utf8")
+    } catch (_) {
+      return source
+    }
+  }
+  extractGitStatusFilePath(statusLinePayload) {
+    if (typeof statusLinePayload !== "string" || statusLinePayload.length === 0) {
+      return ""
+    }
+    const renameIdx = statusLinePayload.indexOf(" -> ")
+    const candidate = renameIdx !== -1
+      ? statusLinePayload.slice(renameIdx + 4)
+      : statusLinePayload
+    return this.decodeGitQuotedPath(candidate)
+  }
+  shouldIncludeGitStatusPath(relativePath) {
+    if (!relativePath) {
+      return true
+    }
+    const normalized = this.normalizeGitRelativePath(relativePath)
+    if (this.gitStatusIgnorePatterns && this.gitStatusIgnorePatterns.some((regex) => regex.test(normalized) || regex.test(`${normalized}/`))) {
+      return false
+    }
+    if (normalized.includes("/site-packages/")) {
+      return false
+    }
+    if (normalized.includes("/Scripts/")) {
+      return false
+    }
+    if (normalized.includes("/bin/activate")) {
+      return false
+    }
+    return true
+  }
+  buildTerminalGitCommitUrl(repoDir, ref = "HEAD") {
+    return `/terminals/git/commit?repo=${encodeURIComponent(repoDir)}&ref=${encodeURIComponent(ref)}`
+  }
+  buildTerminalGitInfoUrl(repoDir, ref = "HEAD") {
+    return `/terminals/git/info?repo=${encodeURIComponent(repoDir)}&ref=${encodeURIComponent(ref)}`
+  }
+  buildTerminalGitDiffUrl(repoDir, ref = "HEAD", filepath = "") {
+    return `/terminals/git/diff?repo=${encodeURIComponent(repoDir)}&ref=${encodeURIComponent(ref)}&file=${encodeURIComponent(filepath)}`
+  }
+  async getRepoHeadStatusByDir(repoDir) {
+    const dir = typeof repoDir === "string" && repoDir.trim().length > 0
+      ? path.resolve(repoDir.trim())
+      : ""
+    if (!dir) {
+      return {
+        changes: [],
+        git_commit_url: null,
+        git_history_url: null,
+        git_fork_url: null,
+        git_push_url: null,
+        gitDirExists: false,
+        hasHead: false,
+      }
+    }
+    const repoExists = await fs.promises.access(dir, fs.constants.F_OK).then(() => true).catch(() => false)
+    if (!repoExists) {
+      return {
+        changes: [],
+        git_commit_url: null,
+        git_history_url: null,
+        git_fork_url: null,
+        git_push_url: null,
+        gitDirExists: false,
+        hasHead: false,
+      }
+    }
+
+    const gitDirPath = path.join(dir, ".git")
+    let gitDirExists = false
+    try {
+      const stats = await fs.promises.stat(gitDirPath)
+      gitDirExists = stats.isDirectory() || stats.isFile()
+    } catch (_) {
+      gitDirExists = false
+    }
+
+    let hasHead = false
+    if (gitDirExists) {
+      try {
+        await git.resolveRef({ fs, dir, ref: "HEAD" })
+        hasHead = true
+      } catch (_) {
+        hasHead = false
+      }
+    }
+
+    let stdout = ""
+    try {
+      const env = this.kernel && this.kernel.envs
+        ? this.kernel.envs
+        : (this.kernel && this.kernel.bin && typeof this.kernel.bin.envs === "function"
+            ? this.kernel.bin.envs(process.env)
+            : process.env)
+      stdout = await new Promise((resolve) => {
+        execFile(
+          "git",
+          ["-c", "core.quotePath=false", "status", "--porcelain=v1", "--untracked-files=all"],
+          {
+            cwd: dir,
+            env,
+            maxBuffer: 10 * 1024 * 1024,
+          },
+          (error, out) => {
+            if (error) {
+              resolve("")
+              return
+            }
+            resolve(out || "")
+          }
+        )
+      })
+    } catch (_) {
+      stdout = ""
+    }
+
+    const lines = stdout.split(/\r?\n/).filter((line) => line && line.trim().length > 0)
+    const changes = []
+    for (const line of lines) {
+      if (line.length < 3) {
+        continue
+      }
+      const x = line[0]
+      const y = line[1]
+      if (x === "!" && y === "!") {
+        continue
+      }
+      let rest = line.slice(3)
+      const filepath = this.extractGitStatusFilePath(rest)
+      if (!filepath) {
+        continue
+      }
+      if (!this.shouldIncludeGitStatusPath(filepath)) {
+        continue
+      }
+      const normalizedFile = this.normalizeGitRelativePath(filepath)
+      const absolutePath = path.join(dir, filepath)
+      let stats = null
+      try {
+        stats = await fs.promises.stat(absolutePath)
+      } catch (_) {
+      }
+      if (stats && stats.isDirectory()) {
+        continue
+      }
+
+      let status
+      if (x === "?" && y === "?") {
+        status = "new (untracked)"
+      } else if (x === "R" || y === "R") {
+        status = "renamed"
+      } else if (x === "C" || y === "C") {
+        status = "copied"
+      } else if (x === "A" || y === "A") {
+        status = "added (staged)"
+      } else if (x === "D" || y === "D") {
+        status = "deleted"
+      } else if (x === "M" || y === "M") {
+        if (x === "M" && y === "M") {
+          status = "modified (staged + unstaged)"
+        } else if (x === "M") {
+          status = "modified (staged)"
+        } else {
+          status = "modified (unstaged)"
+        }
+      } else {
+        status = `unknown (${x}${y})`
+      }
+
+      changes.push({
+        ref: "HEAD",
+        webpath: "/asset/" + path.relative(this.kernel.homedir, absolutePath),
+        file: normalizedFile,
+        path: absolutePath,
+        diffpath: this.buildTerminalGitDiffUrl(dir, "HEAD", normalizedFile),
+        status,
+      })
+    }
+
+    return {
+      changes,
+      git_commit_url: `/run/scripts/git/commit.json?cwd=${encodeURIComponent(dir)}&callback_target=parent&callback=$location.href`,
+      git_history_url: this.buildTerminalGitInfoUrl(dir, "HEAD"),
+      git_fork_url: `/run/scripts/git/fork.json?cwd=${encodeURIComponent(dir)}`,
+      git_push_url: `/run/scripts/git/push.json?cwd=${encodeURIComponent(dir)}`,
+      gitDirExists,
+      hasHead,
+    }
+  }
+  async getGitByDir(ref, repoDir) {
+    const dir = typeof repoDir === "string" && repoDir.trim().length > 0
+      ? path.resolve(repoDir.trim())
+      : ""
+    if (!dir) {
+      return {
+        ref,
+        config: null,
+        remote: null,
+        remotes: [],
+        connected: false,
+        log: [],
+        branch: "HEAD",
+        branches: [{ branch: "HEAD", selected: true }],
+        gitDirExists: false,
+        hasHead: false,
+        dir,
+        detached: false,
+        logError: null
+      }
+    }
+
+    const gitDirPath = path.join(dir, ".git")
+    let gitDirExists = false
+    try {
+      const gitStats = await fs.promises.stat(gitDirPath)
+      gitDirExists = gitStats.isDirectory() || gitStats.isFile()
+    } catch (_) {
+      gitDirExists = false
+    }
+
+    let hasHead = false
+    if (gitDirExists) {
+      try {
+        await git.resolveRef({ fs, dir, ref: "HEAD" })
+        hasHead = true
+      } catch (_) {
+        hasHead = false
+      }
+    }
+
+    let branchList = []
+    try {
+      branchList = await git.listBranches({ fs, dir })
+    } catch (_) {}
+
+    const collectLog = async (targetRef) => {
+      const entries = await git.log({ fs, dir, depth: 50, ref: targetRef })
+      entries.forEach((item) => {
+        item.info = this.buildTerminalGitCommitUrl(dir, item.oid)
+      })
+      return entries
+    }
+
+    let log = []
+    let logError = null
+    if (ref) {
+      try {
+        log = await collectLog(ref)
+      } catch (error) {
+        logError = error
+      }
+    }
+    if (log.length === 0) {
+      try {
+        log = await collectLog("HEAD")
+      } catch (error) {
+        if (!logError) {
+          logError = error
+        }
+      }
+    }
+
+    let currentBranch = null
+    let isDetached = false
+    try {
+      currentBranch = await git.currentBranch({ fs, dir, fullname: false })
+    } catch (_) {}
+    if (!currentBranch) {
+      isDetached = true
+    }
+
+    let branches = []
+    if (branchList.length > 0) {
+      branches = branchList.map((name) => ({
+        branch: name,
+        selected: currentBranch ? name === currentBranch : false
+      }))
+      if (!currentBranch && log.length > 0) {
+        const headOid = log[0].oid
+        branches = [{ branch: headOid, selected: true }, ...branches.map((entry) => ({ ...entry, selected: false }))]
+        currentBranch = headOid
+      }
+    } else {
+      if (currentBranch) {
+        branches = [{ branch: currentBranch, selected: true }]
+      } else if (log.length > 0) {
+        const headOid = log[0].oid
+        branches = [{ branch: headOid, selected: true }]
+        currentBranch = headOid
+      }
+    }
+
+    if (!currentBranch && log.length > 0) {
+      currentBranch = log[0].oid
+    }
+
+    if (branches.length === 0) {
+      branches = [{ branch: currentBranch || "HEAD", selected: true }]
+    }
+
+    const config = await this.kernel.git.config(dir)
+
+    let hosts = ""
+    const hostsFile = this.kernel.path("config/gh/hosts.yml")
+    if (await this.exists(hostsFile)) {
+      hosts = await fs.promises.readFile(hostsFile, "utf8")
+      if (hosts.startsWith("{}")) {
+        hosts = ""
+      }
+    }
+    const connected = hosts.length > 0
+
+    let remote = null
+    if (config && config["remote \"origin\""]) {
+      remote = config["remote \"origin\""].url
+    }
+
+    let remotes = []
+    try {
+      remotes = await git.listRemotes({ fs, dir, verbose: true })
+    } catch (_) {}
+
+    if (!currentBranch) {
+      currentBranch = "HEAD"
+    }
+
+    return {
+      ref,
+      config,
+      remote,
+      remotes,
+      connected,
+      log,
+      branch: currentBranch,
+      branches,
+      gitDirExists,
+      hasHead,
+      dir,
+      detached: isDetached,
+      logError: logError ? String(logError.message || logError) : null
+    }
+  }
+  async getRepoCommitChangesByDir(repoDir, ref = "HEAD") {
+    const dir = typeof repoDir === "string" && repoDir.trim().length > 0
+      ? path.resolve(repoDir.trim())
+      : ""
+    if (!dir) {
+      return { changes: [], git_commit_url: null }
+    }
+    if (ref === "HEAD") {
+      const status = await this.getRepoHeadStatusByDir(dir)
+      return { changes: status.changes, git_commit_url: status.git_commit_url }
+    }
+    const changes = []
+    try {
+      const commitOid = await this.kernel.git.resolveCommitOid(dir, ref)
+      const parentOid = await this.kernel.git.getParentCommit(dir, commitOid)
+      let entries
+      if (parentOid !== commitOid) {
+        entries = await git.walk({
+          fs,
+          dir,
+          trees: [git.TREE({ ref: parentOid }), git.TREE({ ref: commitOid })],
+          map: async (filepath, [A, B]) => {
+            if (filepath === ".") return
+            if (!A && B) return { filepath, type: "added" }
+            if (A && !B) return { filepath, type: "deleted" }
+            if (A && B) {
+              const Aoid = await A.oid()
+              const Boid = await B.oid()
+              if (Aoid !== Boid) return { filepath, type: "modified" }
+            }
+          },
+        })
+      } else {
+        entries = await git.walk({
+          fs,
+          dir,
+          trees: [git.TREE({ ref: commitOid })],
+          map: async (filepath, [B]) => {
+            if (filepath === ".") return
+            return { filepath, type: "added" }
+          },
+        })
+      }
+      const diffFiles = (entries || []).filter(Boolean)
+      for (const { filepath, type } of diffFiles) {
+        if (!this.shouldIncludeGitStatusPath(filepath)) {
+          continue
+        }
+        const fullPath = path.join(dir, filepath)
+        const stats = await fs.promises.stat(fullPath).catch(() => null)
+        if (!stats || stats.isDirectory()) {
+          continue
+        }
+        const normalizedFile = this.normalizeGitRelativePath(filepath)
+        changes.push({
+          ref,
+          webpath: "/asset/" + path.relative(this.kernel.homedir, fullPath),
+          file: normalizedFile,
+          path: fullPath,
+          diffpath: this.buildTerminalGitDiffUrl(dir, ref, normalizedFile),
+          status: type,
+        })
+      }
+    } catch (error) {
+      console.error("[terminals git] commit diff error", dir, ref, error)
+    }
+    return {
+      changes,
+      git_commit_url: `/run/scripts/git/commit.json?cwd=${encodeURIComponent(dir)}&callback_target=parent&callback=$location.href`
+    }
+  }
+  async getGitDiffByDir(repoDir, ref = "HEAD", repoRelativePath = "") {
+    const dir = typeof repoDir === "string" && repoDir.trim().length > 0
+      ? path.resolve(repoDir.trim())
+      : ""
+    const relativePath = this.normalizeGitRelativePath(String(repoRelativePath || "").replace(/^\/+/, ""))
+    const fullpath = path.resolve(dir, relativePath)
+    const rel = path.relative(dir, fullpath)
+    if (!dir || !relativePath || rel.startsWith("..") || path.isAbsolute(rel)) {
+      throw new Error("Invalid diff target")
+    }
+
+    let binary = false
+    try {
+      binary = await isBinaryFile(fullpath)
+    } catch (_) {
+      binary = false
+    }
+
+    let oldContent = ""
+    let newContent = ""
+    let change = null
+    if (!binary) {
+      if (ref === "HEAD") {
+        try {
+          const commitOid = await git.resolveRef({ fs, dir, ref })
+          const { blob } = await git.readBlob({ fs, dir, oid: commitOid, filepath: relativePath })
+          oldContent = Buffer.from(blob).toString("utf8")
+        } catch (_) {
+          oldContent = ""
+        }
+        try {
+          newContent = await fs.promises.readFile(fullpath, "utf8")
+        } catch (_) {
+          newContent = ""
+        }
+        const diffs = diff.diffLines(normalize(oldContent), normalize(newContent))
+        change = Util.diffLinesWithContext(diffs, 5)
+      } else {
+        const commitOid = await this.kernel.git.resolveCommitOid(dir, ref)
+        const parentOid = await this.kernel.git.getParentCommit(dir, commitOid)
+        if (commitOid !== parentOid) {
+          try {
+            const { blob } = await git.readBlob({ fs, dir, oid: parentOid, filepath: relativePath })
+            oldContent = Buffer.from(blob).toString("utf8")
+          } catch (_) {
+            oldContent = ""
+          }
+        } else {
+          oldContent = ""
+        }
+        try {
+          const { blob } = await git.readBlob({ fs, dir, oid: commitOid, filepath: relativePath })
+          newContent = Buffer.from(blob).toString("utf8")
+        } catch (_) {
+          newContent = ""
+        }
+        const diffs = diff.diffLines(normalize(oldContent), normalize(newContent))
+        change = Util.diffLinesWithContext(diffs, 5)
+      }
+    }
+
+    return {
+      webpath: "/asset/" + path.relative(this.kernel.homedir, fullpath),
+      file: relativePath,
+      path: fullpath,
+      diff: change,
+      binary,
+    }
+  }
+  async computeTerminalWorkspaceGitStatusByPath(workspacePath) {
+    const workspaceRoot = typeof workspacePath === "string" && workspacePath.trim().length > 0
+      ? path.resolve(workspacePath.trim())
+      : ""
+    if (!workspaceRoot) {
+      return { totalChanges: 0, repos: [] }
+    }
+    const repos = await this.kernel.git.repos(workspaceRoot)
+    const statuses = []
+    for (const repo of repos) {
+      const repoDir = repo && repo.dir ? path.resolve(repo.dir) : ""
+      if (!repoDir) {
+        continue
+      }
+      try {
+        const status = await this.getRepoHeadStatusByDir(repoDir)
+        statuses.push({
+          name: repo && repo.name ? repo.name : path.basename(repoDir),
+          main: Boolean(repo && repo.main),
+          repoKey: repoDir,
+          repoDir,
+          changeCount: Array.isArray(status.changes) ? status.changes.length : 0,
+          changes: Array.isArray(status.changes) ? status.changes : [],
+          git_commit_url: status.git_commit_url || null,
+          git_history_url: status.git_history_url || this.buildTerminalGitInfoUrl(repoDir, "HEAD"),
+          git_fork_url: status.git_fork_url || `/run/scripts/git/fork.json?cwd=${encodeURIComponent(repoDir)}`,
+          git_push_url: status.git_push_url || `/run/scripts/git/push.json?cwd=${encodeURIComponent(repoDir)}`,
+          hasHead: Boolean(status.hasHead),
+          gitDirExists: Boolean(status.gitDirExists),
+          url: repo && repo.url ? repo.url : null,
+        })
+      } catch (error) {
+        console.error("[terminals git] status error", repoDir, error)
+        statuses.push({
+          name: repo && repo.name ? repo.name : path.basename(repoDir),
+          main: Boolean(repo && repo.main),
+          repoKey: repoDir,
+          repoDir,
+          changeCount: 0,
+          changes: [],
+          git_commit_url: null,
+          git_history_url: this.buildTerminalGitInfoUrl(repoDir, "HEAD"),
+          git_fork_url: `/run/scripts/git/fork.json?cwd=${encodeURIComponent(repoDir)}`,
+          git_push_url: `/run/scripts/git/push.json?cwd=${encodeURIComponent(repoDir)}`,
+          hasHead: false,
+          gitDirExists: false,
+          url: repo && repo.url ? repo.url : null,
+          error: error ? String(error.message || error) : "unknown",
+        })
+      }
+    }
+    statuses.sort((a, b) => {
+      if (Boolean(a.main) === Boolean(b.main)) {
+        return String(a.name || "").localeCompare(String(b.name || ""))
+      }
+      return a.main ? -1 : 1
+    })
+    const totalChanges = statuses.reduce((sum, repo) => sum + (repo.changeCount || 0), 0)
+    return { totalChanges, repos: statuses }
   }
   async computeWorkspaceGitStatus(workspaceName) {
     const workspacePath = this.kernel.path("api", workspaceName)
@@ -2408,8 +3089,97 @@ class Server {
         }
       }
 
-      running = this.getItems(running, meta, p)
-      notRunning = this.getItems(notRunning, meta, p)
+      const normalizeHomeSortMode = (value) => {
+        const normalized = typeof value === "string" ? value.trim().toLowerCase() : ""
+        if (normalized === "most_used" || normalized === "most-used") {
+          return "most_used"
+        }
+        if (normalized === "last_opened" || normalized === "last-opened") {
+          return "last_opened"
+        }
+        if (normalized === "az" || normalized === "a-z") {
+          return "az"
+        }
+        return "most_used"
+      }
+      const homeSortMode = normalizeHomeSortMode(req.query && typeof req.query.sort === "string" ? req.query.sort : "")
+
+      let appPreferenceMap = new Map()
+      if (meta && pathComponents.length === 0 && this.appPreferences && typeof this.appPreferences.readPreferenceMap === "function") {
+        try {
+          appPreferenceMap = await this.appPreferences.readPreferenceMap()
+        } catch (error) {
+          appPreferenceMap = new Map()
+          console.warn("[home] failed to read app preferences", error && error.message ? error.message : error)
+        }
+      }
+      const parsePreferenceTimestamp = (value) => {
+        if (typeof value !== "string" || value.trim().length === 0) {
+          return 0
+        }
+        const parsed = Date.parse(value)
+        return Number.isFinite(parsed) ? parsed : 0
+      }
+      const getPreference = (entry) => {
+        if (!(appPreferenceMap instanceof Map) || !entry || typeof entry.name !== "string") {
+          return null
+        }
+        return appPreferenceMap.get(entry.name) || null
+      }
+      const compareByPreference = (a, b) => {
+        const aPref = getPreference(a)
+        const bPref = getPreference(b)
+        const aStarred = aPref && aPref.starred ? 1 : 0
+        const bStarred = bPref && bPref.starred ? 1 : 0
+        if (aStarred !== bStarred) {
+          return bStarred - aStarred
+        }
+        const aLast = aPref ? parsePreferenceTimestamp(aPref.last_launch_at) : 0
+        const bLast = bPref ? parsePreferenceTimestamp(bPref.last_launch_at) : 0
+        const aCount = aPref ? Number.parseInt(String(aPref.launch_count_total || 0), 10) || 0 : 0
+        const bCount = bPref ? Number.parseInt(String(bPref.launch_count_total || 0), 10) || 0 : 0
+        const an = a && typeof a.name === "string" ? a.name : ""
+        const bn = b && typeof b.name === "string" ? b.name : ""
+        if (homeSortMode === "last_opened") {
+          if (aLast !== bLast) {
+            return bLast - aLast
+          }
+          if (aCount !== bCount) {
+            return bCount - aCount
+          }
+          const byName = an.localeCompare(bn)
+          if (byName !== 0) {
+            return byName
+          }
+        } else if (homeSortMode === "az") {
+          const byName = an.localeCompare(bn)
+          if (byName !== 0) {
+            return byName
+          }
+        } else {
+          if (aCount !== bCount) {
+            return bCount - aCount
+          }
+          if (aLast !== bLast) {
+            return bLast - aLast
+          }
+          const byName = an.localeCompare(bn)
+          if (byName !== 0) {
+            return byName
+          }
+        }
+        const ai = Number.isFinite(a && a.index) ? a.index : Number.MAX_SAFE_INTEGER
+        const bi = Number.isFinite(b && b.index) ? b.index : Number.MAX_SAFE_INTEGER
+        if (ai !== bi) {
+          return ai - bi
+        }
+        return an.localeCompare(bn)
+      }
+      running.sort(compareByPreference)
+      notRunning.sort(compareByPreference)
+
+      running = this.getItems(running, meta, p, appPreferenceMap)
+      notRunning = this.getItems(notRunning, meta, p, appPreferenceMap)
 
       // check running for each
       // running_items
@@ -2559,6 +3329,7 @@ class Server {
           gitRemote,
           userdir: this.kernel.api.userdir,
           ishome: meta,
+          home_sort: homeSortMode,
           running,
           notRunning,
           readme,
@@ -2768,6 +3539,39 @@ class Server {
 
   async renderMenu(req, uri, name, config, pathComponents, indexPath) {
     if (config.menu) {
+      const appendInjectQueryParam = (href, injectList) => {
+        if (typeof href !== "string") {
+          return href
+        }
+        const trimmedHref = href.trim()
+        if (!trimmedHref || !injectList.length) {
+          return href
+        }
+        let parsed
+        let isAbsolute = false
+        try {
+          if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(trimmedHref)) {
+            isAbsolute = true
+            parsed = new URL(trimmedHref)
+          } else {
+            parsed = new URL(trimmedHref, "http://localhost")
+          }
+        } catch (_) {
+          return href
+        }
+        const seen = new Set(parsed.searchParams.getAll("__pinokio_inject"))
+        for (const entry of injectList) {
+          if (seen.has(entry)) {
+            continue
+          }
+          seen.add(entry)
+          parsed.searchParams.append("__pinokio_inject", entry)
+        }
+        if (isAbsolute) {
+          return parsed.toString()
+        }
+        return `${parsed.pathname}${parsed.search}${parsed.hash}`
+      }
 
 //      config.menu = [{
 //        base: "/",
@@ -2859,6 +3663,14 @@ class Server {
         if (menuitem.href && menuitem.params) {
           menuitem.href = menuitem.href + "?" + new URLSearchParams(menuitem.params).toString();
         }
+        if (menuitem.href) {
+          const injectList = normalizeInjectHrefList(menuitem.inject)
+          if (injectList.length > 0) {
+            const hrefWithInject = appendInjectQueryParam(menuitem.href, injectList)
+            menuitem.href = hrefWithInject
+            config.menu[i].href = hrefWithInject
+          }
+        }
 
 
         if (menuitem.shell) {
@@ -2902,7 +3714,7 @@ class Server {
           let relpath = path.relative(this.kernel.homedir, fullpath)
           if (relpath.startsWith("api")) {
             // api script
-            if (this.kernel.api.running[fullpath]) {
+            if (this.kernel.status(fullpath)) {
               menuitem.running = true
             }
           } else {
@@ -4006,8 +4818,8 @@ class Server {
 //    }
     if (config) {
       
-      let c = structuredClone(config)
-      let menu = structuredClone(terminal.menu)
+      let c = safeStructuredClone(config)
+      let menu = safeStructuredClone(terminal.menu)
       c.menu = c.menu.concat(menu)
       try {
         let info = new Info(this.kernel)
@@ -4049,7 +4861,7 @@ class Server {
   }
   async getPlugin(req, config, name) {
     if (config) {
-      let c = structuredClone(config)
+      let c = safeStructuredClone(config)
       try {
 
         let filepath = this.kernel.path("api", name)
@@ -4126,7 +4938,6 @@ class Server {
 
     return { success: true }
   }
-
   async start(options) {
     this.debug = false
     if (options) {
@@ -4256,7 +5067,6 @@ class Server {
 
         let prototype_path = path.resolve(home, "prototype")
         await fse.remove(prototype_path)
-        
 
         console.log("[TRY] Updating to the new version")
         this.kernel.store.set("version", this.version.pinokiod)
@@ -4269,6 +5079,7 @@ class Server {
 
 
     await this.kernel.init({ port: this.port})
+    await Environment.init({}, this.kernel)
     this.kernel.server_port = this.port
     this.kernel.peer.start(this.kernel)
 
@@ -4460,6 +5271,13 @@ class Server {
       getTheme: () => this.theme,
       exists: (target) => this.exists(target),
     });
+    registerAppRoutes(this.app, {
+      registry: this.appRegistry,
+      preferences: this.appPreferences,
+      appSearch: this.appSearch,
+      appLogs: this.appLogs,
+      getTheme: () => this.theme
+    })
 
     this.app.get('/pinokio/notification-sounds', ex(async (req, res) => {
       const soundRoot = path.resolve(__dirname, 'public', 'sound');
@@ -5698,7 +6516,414 @@ class Server {
         link: null
       })
     }))
+    const terminalSessionHelpers = createTerminalSessionHelpers({
+      kernel: this.kernel,
+      fs,
+      path,
+      os,
+      crypto
+    })
+    const {
+      getTerminalStarterProviders,
+      normalizeTerminalLaunchMode,
+      buildTerminalStartCommand,
+      getTerminalWorkspacesRoot,
+      isValidTerminalWorkspaceName,
+      listTerminalWorkspaceFolders,
+      generateTerminalWorkspaceFolderName,
+      ensureTerminalWorkspaceGitignoreEntries,
+      readTerminalWorkspaceUpdatedAt,
+      parseSessionTimestamp,
+      listTerminalSkills,
+      materializeTerminalSkillContext,
+      ensureCodexSelectedSkillFrontmatter,
+      forkGeminiSessionFile,
+      buildTerminalSessions,
+      getTerminalSessionDiscoverySnapshotVersion,
+      coerceTerminalRegistryItems,
+      readTerminalSessionRegistry,
+      writeTerminalSessionRegistry,
+      updateTerminalSessionRegistrySummary,
+      upsertTerminalSessionRegistryEntry
+    } = terminalSessionHelpers
+
+    const normalizeWorkspacePathForExistenceCheck = (value) => {
+      if (typeof value !== "string" || value.trim().length === 0) {
+        return ""
+      }
+      return path.resolve(value.trim())
+    }
+    const createExistingDirectoryResolver = () => {
+      const cache = new Map()
+      return async (candidatePath) => {
+        const normalizedPath = normalizeWorkspacePathForExistenceCheck(candidatePath)
+        if (!normalizedPath) {
+          return null
+        }
+        const cacheKey = process.platform === "win32" ? normalizedPath.toLowerCase() : normalizedPath
+        if (!cache.has(cacheKey)) {
+          cache.set(cacheKey, (async () => {
+            try {
+              const stats = await fs.promises.stat(normalizedPath)
+              return stats && stats.isDirectory() ? normalizedPath : null
+            } catch (error) {
+              return null
+            }
+          })())
+        }
+        return cache.get(cacheKey)
+      }
+    }
+
     const renderHomePage = ex(async (req, res) => {
+      const home = this.kernel.store.get("home") || process.env.PINOKIO_HOME
+      const isTerminalsMode = req.query.mode === "terminals"
+      const isTerminalsFetch = isTerminalsMode && (req.query.fetch === "1" || req.query.format === "json")
+
+      if (isTerminalsMode && !isTerminalsFetch) {
+        let { install_required, requirements_pending } = await this.kernel.bin.check({
+          bin: this.kernel.bin.preset("dev"),
+        })
+        if (!requirements_pending && install_required) {
+          res.redirect(`/setup/dev?callback=${encodeURIComponent(req.originalUrl)}`)
+          return
+        }
+      }
+
+      if (req.query.mode === "terminals" && (req.query.fetch === "1" || req.query.format === "json")) {
+        const includeSkills = req.query.skills === "1"
+        const hasLimitParam = Object.prototype.hasOwnProperty.call(req.query, "limit")
+        const parsedLimit = Number.parseInt(req.query.limit, 10)
+        const pageLimit = hasLimitParam && Number.isFinite(parsedLimit)
+          ? Math.min(Math.max(parsedLimit, 1), 500)
+          : null
+        const parsedCursor = Number.parseInt(req.query.cursor, 10)
+        const pageCursor = pageLimit !== null && Number.isFinite(parsedCursor) && parsedCursor > 0
+          ? parsedCursor
+          : 0
+        const searchQuery = typeof req.query.q === "string" ? req.query.q.trim().toLowerCase() : ""
+        let serializedSkills = null
+        if (includeSkills) {
+          const terminalSkills = await listTerminalSkills()
+          serializedSkills = terminalSkills.map((skill) => ({
+            id: skill.id,
+            label: skill.label,
+            description: skill.description || "",
+            tags: Array.isArray(skill.tags) ? skill.tags : [],
+            provider: skill.provider || "",
+            author: skill.author || "",
+            version: skill.version || "",
+            source: skill.source || ""
+          }))
+        }
+        const workspaceFolders = await listTerminalWorkspaceFolders()
+        const rootWorkspaces = await Promise.all(workspaceFolders.map(async (folder) => {
+          const cwd = path.resolve(getTerminalWorkspacesRoot(), folder)
+          return {
+            name: folder,
+            cwd,
+            updated_at: await readTerminalWorkspaceUpdatedAt(cwd)
+          }
+        }))
+        if (req.query.mode !== "settings" && !home) {
+          const errorPayload = {
+            error: "Home not configured",
+            items: [],
+            providers: getTerminalStarterProviders().map((provider) => ({ key: provider.key, label: provider.label })),
+            workspaces: rootWorkspaces
+          }
+          if (includeSkills) {
+            errorPayload.skills = Array.isArray(serializedSkills) ? serializedSkills : []
+          }
+          res.status(400).json(errorPayload)
+          return
+        }
+        const syncRequested = req.query.sync === "1" || req.query.sync === "true"
+        const discoveredItemsRaw = await buildTerminalSessions(syncRequested, { cacheOnly: false }).catch(() => [])
+        const snapshotVersion = getTerminalSessionDiscoverySnapshotVersion()
+        const resolveExistingWorkspacePath = createExistingDirectoryResolver()
+        const normalizeTerminalId = (value) => typeof value === "string" ? value.trim() : ""
+        const normalizeProviderKey = (value) => {
+          const normalized = typeof value === "string" ? value.trim().toLowerCase() : ""
+          if (!normalized) {
+            return ""
+          }
+          if (normalized.includes("codex")) return "codex"
+          if (normalized.includes("claude")) return "claude"
+          if (normalized.includes("gemini")) return "gemini"
+          return normalized
+        }
+        const inferProviderFromItem = (item) => {
+          if (!item || typeof item !== "object") {
+            return ""
+          }
+          const directProvider = normalizeProviderKey(item.provider)
+          if (directProvider) {
+            return directProvider
+          }
+          const uri = typeof item.uri === "string" ? item.uri.trim() : ""
+          if (uri.includes(":")) {
+            return normalizeProviderKey(uri.split(":")[0])
+          }
+          return normalizeProviderKey(item.provider_label || item.name || "")
+        }
+        const discoveredItems = (await Promise.all(Array.from(discoveredItemsRaw || [])
+          .filter((item) => item && typeof item === "object")
+          .map(async (item, index) => {
+            const normalized = {
+              ...item
+            }
+            const normalizedProvider = normalizeProviderKey(normalized.provider) || inferProviderFromItem(normalized)
+            if (normalizedProvider) {
+              normalized.provider = normalizedProvider
+            }
+            const normalizedTerminalId = normalizeTerminalId(normalized.terminal_id)
+            if (normalizedTerminalId) {
+              normalized.terminal_id = normalizedTerminalId
+            }
+            const workspacePath = typeof normalized.workspace_path === "string" && normalized.workspace_path.trim().length > 0
+              ? normalized.workspace_path
+              : (typeof normalized.cwd === "string" ? normalized.cwd : "")
+            const existingWorkspacePath = await resolveExistingWorkspacePath(workspacePath)
+            if (!existingWorkspacePath) {
+              return null
+            }
+            normalized.cwd = existingWorkspacePath
+            normalized.workspace_path = existingWorkspacePath
+            const existingIndex = typeof normalized.index === "string" || typeof normalized.index === "number"
+              ? String(normalized.index).trim()
+              : ""
+            if (!existingIndex) {
+              const uri = typeof normalized.uri === "string" ? normalized.uri.trim() : ""
+              normalized.index = uri || `session:${index}`
+            }
+            return normalized
+          }))).filter(Boolean)
+        const normalizeWorkspaceFilterKey = (value) => {
+          if (typeof value !== "string") {
+            return ""
+          }
+          const trimmed = value.trim()
+          if (!trimmed) {
+            return ""
+          }
+          const resolved = path.resolve(trimmed)
+          return process.platform === "win32" ? resolved.toLowerCase() : resolved
+        }
+        const workspaceFilterRaw = typeof req.query.workspace === "string" ? req.query.workspace.trim() : ""
+        let scopedItems = discoveredItems
+        if (workspaceFilterRaw) {
+          const workspaceFilterKey = normalizeWorkspaceFilterKey(workspaceFilterRaw)
+          if (workspaceFilterKey) {
+            scopedItems = discoveredItems.filter((item) => {
+              const itemWorkspacePath = item && typeof item.workspace_path === "string" && item.workspace_path.trim().length > 0
+                ? item.workspace_path
+                : (item && typeof item.cwd === "string" ? item.cwd : "")
+              if (!itemWorkspacePath) {
+                return false
+              }
+              return normalizeWorkspaceFilterKey(itemWorkspacePath) === workspaceFilterKey
+            })
+          } else {
+            scopedItems = []
+          }
+        }
+        const normalizeWorkspaceEntryKey = (value) => {
+          if (typeof value !== "string") {
+            return ""
+          }
+          const trimmed = value.trim()
+          if (!trimmed) {
+            return ""
+          }
+          const resolved = path.resolve(trimmed)
+          return process.platform === "win32" ? resolved.toLowerCase() : resolved
+        }
+        const resolveWorkspaceName = (nameValue, workspacePath) => {
+          if (typeof nameValue === "string") {
+            const trimmedName = nameValue.trim()
+            if (trimmedName) {
+              return trimmedName
+            }
+          }
+          if (typeof workspacePath === "string" && workspacePath.trim().length > 0) {
+            return path.basename(path.resolve(workspacePath))
+          }
+          return "workspace"
+        }
+        const normalizeWorkspaceTimestamp = (value) => {
+          const num = Number(value)
+          if (!Number.isFinite(num) || num <= 0) {
+            return null
+          }
+          return num
+        }
+        const managedWorkspacesRoot = path.resolve(getTerminalWorkspacesRoot())
+        const managedWorkspaceFolderKeys = new Set(
+          rootWorkspaces
+            .map((workspace) => normalizeWorkspaceEntryKey(workspace && workspace.cwd ? workspace.cwd : ""))
+            .filter(Boolean)
+        )
+        const inferWorkspaceManaged = (workspacePath, managedHint = null) => {
+          const hinted = typeof managedHint === "boolean" ? managedHint : null
+          const normalizedPath = normalizeWorkspaceEntryKey(workspacePath)
+          const inferred = normalizedPath ? isPathWithin(normalizedPath, managedWorkspacesRoot) : false
+          if (hinted === null) {
+            return inferred
+          }
+          return hinted || inferred
+        }
+        const workspaceByPath = new Map()
+        const registerWorkspace = (workspacePath, nameValue = "", updatedAtValue = null, managedHint = null) => {
+          const key = normalizeWorkspaceEntryKey(workspacePath)
+          if (!key) {
+            return
+          }
+          const normalizedUpdatedAt = normalizeWorkspaceTimestamp(updatedAtValue)
+          const managed = inferWorkspaceManaged(workspacePath, managedHint)
+          if (!workspaceByPath.has(key)) {
+            workspaceByPath.set(key, {
+              name: resolveWorkspaceName(nameValue, workspacePath),
+              cwd: path.resolve(workspacePath),
+              updated_at: normalizedUpdatedAt,
+              managed
+            })
+            return
+          }
+          const existing = workspaceByPath.get(key)
+          if (existing && (!existing.name || existing.name === "workspace")) {
+            existing.name = resolveWorkspaceName(nameValue, workspacePath)
+          }
+          if (existing && managed) {
+            existing.managed = true
+          }
+          if (existing && normalizedUpdatedAt !== null) {
+            const existingUpdatedAt = normalizeWorkspaceTimestamp(existing.updated_at)
+            if (existingUpdatedAt === null || normalizedUpdatedAt > existingUpdatedAt) {
+              existing.updated_at = normalizedUpdatedAt
+            }
+          }
+        }
+        for (let i = 0; i < rootWorkspaces.length; i++) {
+          const workspace = rootWorkspaces[i]
+          registerWorkspace(
+            workspace && workspace.cwd ? workspace.cwd : "",
+            workspace && workspace.name ? workspace.name : "",
+            null,
+            true
+          )
+        }
+        for (let i = 0; i < discoveredItems.length; i++) {
+          const item = discoveredItems[i]
+          if (!item || typeof item !== "object") {
+            continue
+          }
+          const workspacePath = typeof item.workspace_path === "string" && item.workspace_path.trim().length > 0
+            ? item.workspace_path
+            : (typeof item.cwd === "string" ? item.cwd : "")
+          const workspacePathKey = normalizeWorkspaceEntryKey(workspacePath)
+          if (workspacePathKey && isPathWithin(workspacePathKey, managedWorkspacesRoot) && !managedWorkspaceFolderKeys.has(workspacePathKey)) {
+            // Drop stale managed-workspace references that only exist in session logs.
+            continue
+          }
+          const workspaceName = typeof item.workspace_name === "string" ? item.workspace_name : ""
+          registerWorkspace(workspacePath, workspaceName, item && item.timestamp ? item.timestamp : null)
+        }
+        const workspaceEntries = Array.from(workspaceByPath.values())
+        await Promise.all(workspaceEntries.map(async (workspace) => {
+          if (!workspace || !workspace.cwd) {
+            return
+          }
+          const updatedAtFromFs = await readTerminalWorkspaceUpdatedAt(workspace.cwd)
+          const normalizedUpdatedAt = normalizeWorkspaceTimestamp(updatedAtFromFs)
+          const currentUpdatedAt = normalizeWorkspaceTimestamp(workspace.updated_at)
+          // Canonical order uses latest session activity; filesystem mtime is only fallback.
+          if (currentUpdatedAt === null && normalizedUpdatedAt !== null) {
+            workspace.updated_at = normalizedUpdatedAt
+          }
+        }))
+        const workspaces = workspaceEntries
+          .sort((a, b) => {
+            const aUpdatedAt = normalizeWorkspaceTimestamp(a && a.updated_at) || 0
+            const bUpdatedAt = normalizeWorkspaceTimestamp(b && b.updated_at) || 0
+            if (aUpdatedAt !== bUpdatedAt) {
+              return bUpdatedAt - aUpdatedAt
+            }
+            const an = typeof a.name === "string" ? a.name : ""
+            const bn = typeof b.name === "string" ? b.name : ""
+            return an.localeCompare(bn)
+          })
+        let filteredItems = scopedItems
+        if (searchQuery) {
+          filteredItems = scopedItems.filter((item) => {
+            const haystack = [
+              item && item.name ? item.name : "",
+              item && item.description ? item.description : "",
+              item && item.provider_label ? item.provider_label : "",
+              item && item.cwd ? item.cwd : "",
+              item && item.uri ? item.uri : "",
+              item && item.summary ? item.summary : "",
+              item && item.workspace_name ? item.workspace_name : ""
+            ].join(" ").toLowerCase()
+            return haystack.includes(searchQuery)
+          })
+        }
+        let responseItems = filteredItems
+        let pagination = null
+        if (pageLimit !== null) {
+          const safeCursor = Math.max(0, Math.min(pageCursor, filteredItems.length))
+          const sliceEnd = Math.min(filteredItems.length, safeCursor + pageLimit)
+          responseItems = filteredItems.slice(safeCursor, sliceEnd)
+          pagination = {
+            cursor: safeCursor,
+            limit: pageLimit,
+            total: filteredItems.length,
+            hasMore: sliceEnd < filteredItems.length,
+            nextCursor: sliceEnd < filteredItems.length ? sliceEnd : null
+          }
+        }
+        const responsePayload = {
+          items: responseItems,
+          providers: getTerminalStarterProviders().map((provider) => ({ key: provider.key, label: provider.label })),
+          workspaces,
+          snapshot_version: snapshotVersion
+        }
+        if (pagination) {
+          responsePayload.pagination = pagination
+        }
+        if (includeSkills) {
+          responsePayload.skills = Array.isArray(serializedSkills) ? serializedSkills : []
+        }
+        res.json(responsePayload)
+        return
+      }
+
+      if (req.query.mode === "terminals") {
+        if (req.query.mode !== "settings" && !home) {
+          res.redirect("/home?mode=settings")
+          return
+        }
+        const terminalDefaultSkillIds = Array.from(new Set([
+          path.resolve(os.homedir(), ".agents", "skills", "pinokio", "SKILL.md"),
+          path.resolve(os.homedir(), ".agents", "skills", "gepeto", "SKILL.md")
+        ].map((skillPath) => crypto.createHash("sha1").update(skillPath).digest("hex").slice(0, 16))))
+        const peerAccess = await this.composePeerAccessPayload()
+        res.render("terminals", {
+          ...peerAccess,
+          logo: this.logo,
+          theme: this.theme,
+          agent: req.agent,
+          query: req.query,
+          uri: "/home?mode=terminals",
+          items: [],
+          providers: getTerminalStarterProviders().map((provider) => ({ key: provider.key, label: provider.label })),
+          skills: [],
+          defaultSkillIds: terminalDefaultSkillIds,
+          ishome: false
+        })
+        return
+      }
+
       if (Object.prototype.hasOwnProperty.call(req.query, 'create')) {
         const protocol = (req.$source && req.$source.protocol) || req.protocol || 'http'
         const host = req.get('host') || `localhost:${this.port}`
@@ -5961,6 +7186,826 @@ class Server {
 
     this.app.get("/home", renderHomePage)
 
+    const normalizePathForComparison = (value) => {
+      if (typeof value !== "string" || value.trim().length === 0) {
+        return ""
+      }
+      let resolved = path.resolve(value.trim())
+      if (process.platform === "win32") {
+        resolved = resolved.toLowerCase()
+      }
+      return resolved
+    }
+    const isPathWithin = (candidate, parent) => {
+      const normalizedCandidate = normalizePathForComparison(candidate)
+      const normalizedParent = normalizePathForComparison(parent)
+      if (!normalizedCandidate || !normalizedParent) {
+        return false
+      }
+      if (normalizedCandidate === normalizedParent) {
+        return true
+      }
+      const withSep = normalizedParent.endsWith(path.sep) ? normalizedParent : `${normalizedParent}${path.sep}`
+      return normalizedCandidate.startsWith(withSep)
+    }
+    const resolveTerminalGitPath = (inputPath) => {
+      if (typeof inputPath !== "string") {
+        return null
+      }
+      const trimmed = inputPath.trim()
+      if (!trimmed) {
+        return null
+      }
+      return path.resolve(trimmed)
+    }
+    const handleTerminalGitResetFiles = createTerminalGitResetHandler({
+      kernel: this.kernel,
+      git,
+      fs,
+      path,
+      execFile,
+      resolveRepoPath: resolveTerminalGitPath,
+      isPathWithin,
+      getTerminalWorkspacesRoot
+    })
+
+    this.app.post("/terminals/deploy/local", ex(async (req, res) => {
+      const body = req.body && typeof req.body === "object" ? req.body : {}
+      const folderName = typeof body.folderName === "string" ? body.folderName.trim() : ""
+      const sessionTerminalId = typeof body.terminal_id === "string" ? body.terminal_id.trim() : ""
+      const sessionUri = typeof body.sessionUri === "string" ? body.sessionUri.trim().toLowerCase() : ""
+      const sessionCwdHint = typeof body.sessionCwd === "string" ? body.sessionCwd.trim() : ""
+
+      if (!folderName) {
+        res.status(400).json({
+          ok: false,
+          error: "folderName is required"
+        })
+        return
+      }
+      if (folderName === "." || folderName === ".." || /[\\/]/.test(folderName) || folderName.includes("\0")) {
+        res.status(400).json({
+          ok: false,
+          error: "Invalid folder name"
+        })
+        return
+      }
+
+      const registryPath = this.kernel.path("cache", "terminals", "sessions.json")
+      let registryItems = []
+      try {
+        const rawRegistry = await fs.promises.readFile(registryPath, "utf8")
+        const parsedRegistry = JSON.parse(rawRegistry)
+        if (parsedRegistry && Array.isArray(parsedRegistry.items)) {
+          registryItems = parsedRegistry.items
+        }
+      } catch (error) {
+      }
+
+      let sourcePath = ""
+      if (sessionTerminalId) {
+        for (let i = 0; i < registryItems.length; i++) {
+          const entry = registryItems[i]
+          const entryTerminalId = entry && typeof entry.terminal_id === "string" ? entry.terminal_id.trim() : ""
+          const entryCwd = entry && typeof entry.cwd === "string" ? entry.cwd.trim() : ""
+          if (entryTerminalId && entryCwd && entryTerminalId === sessionTerminalId) {
+            sourcePath = entryCwd
+            break
+          }
+        }
+      }
+
+      if (sessionUri) {
+        for (let i = 0; i < registryItems.length; i++) {
+          const entry = registryItems[i]
+          const entryUri = entry && typeof entry.uri === "string" ? entry.uri.trim().toLowerCase() : ""
+          const entryCwd = entry && typeof entry.cwd === "string" ? entry.cwd.trim() : ""
+          if (entryUri && entryCwd && entryUri === sessionUri) {
+            sourcePath = entryCwd
+            break
+          }
+        }
+      }
+
+      if (!sourcePath && sessionCwdHint) {
+        const normalizedHint = normalizePathForComparison(sessionCwdHint)
+        for (let i = 0; i < registryItems.length; i++) {
+          const entry = registryItems[i]
+          const entryCwd = entry && typeof entry.cwd === "string" ? entry.cwd.trim() : ""
+          if (entryCwd && normalizePathForComparison(entryCwd) === normalizedHint) {
+            sourcePath = entryCwd
+            break
+          }
+        }
+        if (!sourcePath) {
+          const workspacesRoot = this.kernel.path("workspaces")
+          if (isPathWithin(normalizedHint, workspacesRoot)) {
+            sourcePath = normalizedHint
+          }
+        }
+      }
+
+      if (!sourcePath) {
+        res.status(400).json({
+          ok: false,
+          error: "Current session folder not found."
+        })
+        return
+      }
+
+      let sourceStats = null
+      try {
+        sourceStats = await fs.promises.stat(sourcePath)
+      } catch (error) {
+      }
+      if (!sourceStats || !sourceStats.isDirectory()) {
+        res.status(400).json({
+          ok: false,
+          error: "Current session folder not found."
+        })
+        return
+      }
+
+      const apiRoot = this.kernel.path("api")
+      await fs.promises.mkdir(apiRoot, { recursive: true })
+      const targetPath = this.kernel.path("api", folderName)
+      const normalizedSourcePath = normalizePathForComparison(sourcePath)
+      const normalizedTargetPath = normalizePathForComparison(targetPath)
+      if (!normalizedTargetPath || !isPathWithin(normalizedTargetPath, apiRoot)) {
+        res.status(400).json({
+          ok: false,
+          error: "Invalid destination path."
+        })
+        return
+      }
+      if (isPathWithin(normalizedTargetPath, normalizedSourcePath)) {
+        res.status(400).json({
+          ok: false,
+          error: "Invalid deployment target."
+        })
+        return
+      }
+
+      const targetExists = await fs.promises.access(targetPath, fs.constants.F_OK).then(() => true).catch(() => false)
+      if (targetExists) {
+        res.json({
+          ok: false,
+          code: "exists",
+          error: "Folder already exists"
+        })
+        return
+      }
+
+      try {
+        await fs.promises.cp(sourcePath, targetPath, { recursive: true })
+      } catch (error) {
+        res.status(500).json({
+          ok: false,
+          error: error && error.message ? error.message : "Failed to copy folder."
+        })
+        return
+      }
+
+      res.json({
+        ok: true,
+        folder: folderName,
+        path: targetPath
+      })
+    }))
+
+    this.app.get("/terminals/workspaces/suggest", ex(async (req, res) => {
+      const folderName = await generateTerminalWorkspaceFolderName()
+      res.json({
+        ok: true,
+        folder: folderName,
+        root: path.resolve(getTerminalWorkspacesRoot())
+      })
+    }))
+
+    this.app.post("/terminals/workspaces/create", ex(async (req, res) => {
+      const requestedFolderName = typeof req.body?.folderName === "string"
+        ? req.body.folderName.trim()
+        : ""
+      const folderName = requestedFolderName || await generateTerminalWorkspaceFolderName()
+      if (!isValidTerminalWorkspaceName(folderName)) {
+        res.status(400).json({
+          ok: false,
+          error: "Invalid workspace name."
+        })
+        return
+      }
+      const workspacesRoot = path.resolve(getTerminalWorkspacesRoot())
+      await fs.promises.mkdir(workspacesRoot, { recursive: true })
+      const workspacePath = path.resolve(workspacesRoot, folderName)
+      if (!isPathWithin(workspacePath, workspacesRoot)) {
+        res.status(400).json({
+          ok: false,
+          error: "Invalid workspace path."
+        })
+        return
+      }
+      const alreadyExists = await fs.promises.access(workspacePath, fs.constants.F_OK).then(() => true).catch(() => false)
+      if (alreadyExists) {
+        res.status(409).json({
+          ok: false,
+          code: "exists",
+          error: "Workspace already exists."
+        })
+        return
+      }
+      await fs.promises.mkdir(workspacePath, { recursive: false })
+      try {
+        await this.kernel.exec({
+          message: ["git init"],
+          path: workspacePath
+        }, () => {})
+        await ensureTerminalWorkspaceGitignoreEntries(workspacePath)
+      } catch (error) {
+        await fs.promises.rm(workspacePath, { recursive: true, force: true }).catch(() => {})
+        res.status(500).json({
+          ok: false,
+          error: error && error.message ? error.message : "Failed to initialize workspace."
+        })
+        return
+      }
+      res.json({
+        ok: true,
+        folder: folderName,
+        cwd: workspacePath
+      })
+    }))
+
+    this.app.get("/terminals/git/status", ex(async (req, res) => {
+      const workspacePath = resolveTerminalGitPath(req.query && req.query.workspace ? String(req.query.workspace) : "")
+      if (!workspacePath) {
+        res.status(400).json({
+          ok: false,
+          error: "Valid workspace path is required."
+        })
+        return
+      }
+      const stats = await fs.promises.stat(workspacePath).catch(() => null)
+      if (!stats || !stats.isDirectory()) {
+        res.status(404).json({
+          ok: false,
+          error: "Workspace not found."
+        })
+        return
+      }
+      try {
+        const status = await this.computeTerminalWorkspaceGitStatusByPath(workspacePath)
+        res.json({
+          ok: true,
+          workspace: workspacePath,
+          ...status
+        })
+      } catch (error) {
+        console.error("[terminals git] status compute error", workspacePath, error)
+        res.status(500).json({
+          ok: false,
+          error: error && error.message ? error.message : "Failed to load git status.",
+          totalChanges: 0,
+          repos: [],
+        })
+      }
+    }))
+
+    this.app.post("/terminals/git/init", ex(async (req, res) => {
+      const body = req.body && typeof req.body === "object" ? req.body : {}
+      const workspacePath = resolveTerminalGitPath(typeof body.workspacePath === "string" ? body.workspacePath : "")
+      if (!workspacePath) {
+        res.status(400).json({
+          ok: false,
+          error: "Valid workspace path is required."
+        })
+        return
+      }
+      const stats = await fs.promises.stat(workspacePath).catch(() => null)
+      if (!stats || !stats.isDirectory()) {
+        res.status(404).json({
+          ok: false,
+          error: "Workspace not found."
+        })
+        return
+      }
+      let alreadyInitialized = false
+      try {
+        const gitStats = await fs.promises.stat(path.join(workspacePath, ".git"))
+        alreadyInitialized = gitStats.isDirectory() || gitStats.isFile()
+      } catch (_) {
+        alreadyInitialized = false
+      }
+      if (!alreadyInitialized) {
+        try {
+          await this.kernel.exec({
+            message: ["git init"],
+            path: workspacePath
+          }, () => {})
+          await ensureTerminalWorkspaceGitignoreEntries(workspacePath)
+        } catch (error) {
+          res.status(500).json({
+            ok: false,
+            error: error && error.message ? error.message : "Failed to initialize git."
+          })
+          return
+        }
+      }
+      const status = await this.computeTerminalWorkspaceGitStatusByPath(workspacePath).catch(() => ({ totalChanges: 0, repos: [] }))
+      res.json({
+        ok: true,
+        workspace: workspacePath,
+        alreadyInitialized,
+        ...status
+      })
+    }))
+
+    this.app.get("/terminals/git/info", ex(async (req, res) => {
+      const repoPath = resolveTerminalGitPath(req.query && req.query.repo ? String(req.query.repo) : "")
+      if (!repoPath) {
+        res.status(400).json({
+          ok: false,
+          error: "Valid repository path is required."
+        })
+        return
+      }
+      const stats = await fs.promises.stat(repoPath).catch(() => null)
+      if (!stats || !stats.isDirectory()) {
+        res.status(404).json({
+          ok: false,
+          error: "Repository not found."
+        })
+        return
+      }
+      const ref = req.query && typeof req.query.ref === "string" && req.query.ref.trim().length > 0
+        ? req.query.ref.trim()
+        : "HEAD"
+      const summary = await this.getGitByDir(ref, repoPath)
+      if (ref === "HEAD") {
+        try {
+          const headStatus = await this.getRepoHeadStatusByDir(repoPath)
+          summary.changes = Array.isArray(headStatus.changes) ? headStatus.changes : []
+          summary.git_commit_url = headStatus.git_commit_url || null
+        } catch (error) {
+          summary.changes = []
+        }
+      } else {
+        const commitChanges = await this.getRepoCommitChangesByDir(repoPath, ref)
+        summary.changes = Array.isArray(commitChanges.changes) ? commitChanges.changes : []
+      }
+      if (!summary.git_commit_url) {
+        summary.git_commit_url = `/run/scripts/git/commit.json?cwd=${encodeURIComponent(repoPath)}&callback_target=parent&callback=$location.href`
+      }
+      summary.dir = repoPath
+      res.json(summary)
+    }))
+
+    this.app.get("/terminals/git/commit", ex(async (req, res) => {
+      const repoPath = resolveTerminalGitPath(req.query && req.query.repo ? String(req.query.repo) : "")
+      if (!repoPath) {
+        res.status(400).json({
+          ok: false,
+          error: "Valid repository path is required."
+        })
+        return
+      }
+      const stats = await fs.promises.stat(repoPath).catch(() => null)
+      if (!stats || !stats.isDirectory()) {
+        res.status(404).json({
+          ok: false,
+          error: "Repository not found."
+        })
+        return
+      }
+      const ref = req.query && typeof req.query.ref === "string" && req.query.ref.trim().length > 0
+        ? req.query.ref.trim()
+        : "HEAD"
+      const payload = await this.getRepoCommitChangesByDir(repoPath, ref)
+      res.json(payload)
+    }))
+
+    this.app.get("/terminals/git/diff", ex(async (req, res) => {
+      const repoPath = resolveTerminalGitPath(req.query && req.query.repo ? String(req.query.repo) : "")
+      if (!repoPath) {
+        res.status(400).json({
+          ok: false,
+          error: "Valid repository path is required."
+        })
+        return
+      }
+      const stats = await fs.promises.stat(repoPath).catch(() => null)
+      if (!stats || !stats.isDirectory()) {
+        res.status(404).json({
+          ok: false,
+          error: "Repository not found."
+        })
+        return
+      }
+      const ref = req.query && typeof req.query.ref === "string" && req.query.ref.trim().length > 0
+        ? req.query.ref.trim()
+        : "HEAD"
+      const repoRelativePath = req.query && typeof req.query.file === "string" ? req.query.file : ""
+      if (!repoRelativePath || !repoRelativePath.trim()) {
+        res.status(400).json({
+          ok: false,
+          error: "File path is required."
+        })
+        return
+      }
+      try {
+        const payload = await this.getGitDiffByDir(repoPath, ref, repoRelativePath)
+        res.json(payload)
+      } catch (error) {
+        res.status(400).json({
+          ok: false,
+          error: error && error.message ? error.message : "Failed to generate diff."
+        })
+      }
+    }))
+
+    this.app.post("/terminals/git/reset-files", ex(handleTerminalGitResetFiles))
+
+    this.app.post("/terminals/sessions/summary", ex(async (req, res) => {
+      const body = req.body && typeof req.body === "object" ? req.body : {}
+      const terminalId = typeof body.terminal_id === "string" ? body.terminal_id.trim() : ""
+      const summary = typeof body.summary === "string" ? body.summary.trim() : ""
+      const name = typeof body.name === "string" ? body.name.trim() : ""
+      const requestedSessionId = typeof body.session === "string" ? body.session.trim() : ""
+      const refreshRequested = body.refresh === true
+        || body.refresh === 1
+        || body.refresh === "1"
+        || body.refresh === "true"
+      const clearSessionRequested = body.clear_session === true
+        || body.clear_session === 1
+        || body.clear_session === "1"
+        || body.clear_session === "true"
+      const timestampRaw = body && Object.prototype.hasOwnProperty.call(body, "timestamp")
+        ? String(body.timestamp || "").trim()
+        : ""
+      if (!terminalId) {
+        res.status(400).json({
+          ok: false,
+          error: "terminal_id is required."
+        })
+        return
+      }
+
+      let resolvedSummary = summary
+      let resolvedName = name || summary
+      let resolvedTimestamp = timestampRaw
+
+      const registry = await readTerminalSessionRegistry()
+      const registryItems = coerceTerminalRegistryItems(registry.items)
+      const registryEntry = registryItems.find((entry) => {
+        const entryTerminalId = entry && typeof entry.terminal_id === "string" ? entry.terminal_id.trim() : ""
+        return entryTerminalId === terminalId
+      })
+      if (!registryEntry) {
+        res.status(404).json({
+          ok: false,
+          error: "Session not found in registry."
+        })
+        return
+      }
+
+      const existingRegistrySummary = typeof registryEntry.summary === "string" ? registryEntry.summary.trim() : ""
+      const existingRegistryName = typeof registryEntry.name === "string" ? registryEntry.name.trim() : ""
+      if (!resolvedSummary && existingRegistrySummary) {
+        resolvedSummary = existingRegistrySummary
+        resolvedName = existingRegistryName || existingRegistrySummary
+        resolvedTimestamp = typeof registryEntry.timestamp === "string" ? registryEntry.timestamp : resolvedTimestamp
+      }
+
+      const mappedSessionIdFromRegistry = typeof registryEntry.provider_session_id === "string" && registryEntry.provider_session_id.trim().length > 0
+        ? registryEntry.provider_session_id.trim()
+        : ""
+      let mappedSessionId = requestedSessionId || mappedSessionIdFromRegistry
+      if (clearSessionRequested) {
+        mappedSessionId = ""
+        await upsertTerminalSessionRegistryEntry({
+          terminal_id: terminalId,
+          provider_session_id: null
+        }).catch(() => {})
+      }
+      if (mappedSessionId && mappedSessionId !== mappedSessionIdFromRegistry) {
+        await upsertTerminalSessionRegistryEntry({
+          terminal_id: terminalId,
+          provider_session_id: mappedSessionId
+        }).catch(() => {})
+      }
+
+      if (!resolvedSummary) {
+        res.status(404).json({
+          ok: false,
+          error: "No summary found for terminal session."
+        })
+        return
+      }
+
+      if (resolvedTimestamp) {
+        const parsedTimestamp = parseSessionTimestamp(resolvedTimestamp)
+        if (!(parsedTimestamp > 0)) {
+          res.status(400).json({
+            ok: false,
+            error: "timestamp must be a valid date/time."
+          })
+          return
+        }
+      }
+      const result = await updateTerminalSessionRegistrySummary({
+        terminal_id: terminalId,
+        summary: resolvedSummary,
+        name: resolvedName,
+        timestamp: resolvedTimestamp
+      })
+      res.json({
+        ok: true,
+        terminal_id: terminalId,
+        provider_session_id: mappedSessionId || null,
+        name: result && typeof result.name === "string" ? result.name : resolvedName,
+        summary: result && typeof result.summary === "string" ? result.summary : resolvedSummary,
+        timestamp: result && result.timestamp ? result.timestamp : new Date().toISOString(),
+        matched: Boolean(result && result.matched),
+        updated: Boolean(result && result.updated),
+        refreshed: refreshRequested || !summary
+      })
+    }))
+
+    const createManagedTerminalSession = async (body = {}) => {
+      const failStart = (status, message) => {
+        const error = new Error(message)
+        error.status = status
+        throw error
+      }
+      const providers = getTerminalStarterProviders()
+      const providerMap = new Map(providers.map((provider) => [provider.key, provider]))
+      const providerKey = typeof body.provider === "string" ? body.provider.trim().toLowerCase() : ""
+      if (!providerMap.has(providerKey)) {
+        failStart(400, "Unsupported provider")
+      }
+
+      const provider = providerMap.get(providerKey)
+      const launchMode = normalizeTerminalLaunchMode(
+        body && typeof body === "object"
+          ? (body.launchMode || body.launch_mode)
+          : "",
+        provider && provider.defaultLaunchMode ? provider.defaultLaunchMode : "guarded"
+      )
+      const startCommand = buildTerminalStartCommand(provider, launchMode) || provider.startCommand || provider.command
+      if (typeof startCommand !== "string" || startCommand.trim().length === 0) {
+        failStart(500, `No start command configured for ${provider.label || provider.key || "provider"}.`)
+      }
+      const now = new Date()
+      const pad = (value) => String(value).padStart(2, "0")
+      const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+      const shortId = Math.random().toString(36).slice(2, 8)
+      const runId = `${timestamp}-${shortId}`
+      const requestedWorkspacePath = typeof body.workspacePath === "string"
+        ? body.workspacePath.trim()
+        : ""
+      const requestedWorkspaceName = typeof body.workspaceName === "string"
+        ? body.workspaceName.trim()
+        : ""
+      const workspacesRoot = path.resolve(getTerminalWorkspacesRoot())
+      await fs.promises.mkdir(workspacesRoot, { recursive: true })
+      let sessionCwd = ""
+      let workspaceFolderName = ""
+      let createdWorkspaceForSession = false
+      if (requestedWorkspacePath) {
+        const resolvedWorkspacePath = path.resolve(requestedWorkspacePath)
+        const stat = await fs.promises.stat(resolvedWorkspacePath).catch(() => null)
+        if (!stat || !stat.isDirectory()) {
+          failStart(400, "Workspace not found.")
+        }
+        sessionCwd = resolvedWorkspacePath
+        workspaceFolderName = path.basename(resolvedWorkspacePath)
+      } else {
+        let selectedName = requestedWorkspaceName || await generateTerminalWorkspaceFolderName()
+        if (!isValidTerminalWorkspaceName(selectedName)) {
+          failStart(400, "Invalid workspace name.")
+        }
+        let candidatePath = path.resolve(workspacesRoot, selectedName)
+        if (!isPathWithin(candidatePath, workspacesRoot)) {
+          failStart(400, "Invalid workspace path.")
+        }
+        if (!requestedWorkspaceName) {
+          let attempts = 0
+          while (attempts < 64) {
+            const exists = await fs.promises.access(candidatePath, fs.constants.F_OK).then(() => true).catch(() => false)
+            if (!exists) {
+              break
+            }
+            selectedName = await generateTerminalWorkspaceFolderName()
+            candidatePath = path.resolve(workspacesRoot, selectedName)
+            attempts += 1
+          }
+        }
+        const exists = await fs.promises.access(candidatePath, fs.constants.F_OK).then(() => true).catch(() => false)
+        if (exists) {
+          failStart(409, "Workspace already exists.")
+        }
+        await fs.promises.mkdir(candidatePath, { recursive: false })
+        sessionCwd = candidatePath
+        workspaceFolderName = selectedName
+        createdWorkspaceForSession = true
+      }
+      const terminalId = `${provider.key}:${workspaceFolderName}:${runId}`
+
+      const availableSkills = await listTerminalSkills()
+      const availableSkillMap = new Map(availableSkills.map((skill) => [skill.id, skill]))
+      const requestedSkillIds = Array.isArray(body.skills) ? body.skills : []
+      const requestedUploadToken = typeof body.uploadToken === "string" ? body.uploadToken.trim().toLowerCase() : ""
+      const selectedSkills = []
+      const selectedSkillSet = new Set()
+      for (let i = 0; i < requestedSkillIds.length; i++) {
+        const requested = typeof requestedSkillIds[i] === "string" ? requestedSkillIds[i].trim() : ""
+        if (!requested || selectedSkillSet.has(requested)) {
+          continue
+        }
+        if (!availableSkillMap.has(requested)) {
+          continue
+        }
+        selectedSkillSet.add(requested)
+        selectedSkills.push(availableSkillMap.get(requested))
+      }
+
+      if (requestedUploadToken && !/^[a-f0-9]{32}$/.test(requestedUploadToken)) {
+        failStart(400, "Invalid upload token")
+      }
+
+      const resolveUploadCopyTarget = async (dir, filename) => {
+        const safe = path.basename(filename || "file")
+        const ext = path.extname(safe)
+        const base = ext ? safe.slice(0, -ext.length) : safe
+        let index = 0
+        while (true) {
+          const candidateName = index === 0 ? `${base}${ext}` : `${base}-${index}${ext}`
+          const candidatePath = path.resolve(dir, candidateName)
+          // session cwd is trusted and generated server-side; keep all uploads rooted to it.
+          if (!candidatePath.startsWith(dir + path.sep)) {
+            throw new Error("Invalid upload target")
+          }
+          try {
+            await fs.promises.access(candidatePath, fs.constants.F_OK)
+            index += 1
+          } catch (_) {
+            return candidatePath
+          }
+        }
+      }
+
+      await fs.promises.mkdir(sessionCwd, { recursive: true })
+      if (createdWorkspaceForSession) {
+        try {
+          await this.kernel.exec({
+            message: ["git init"],
+            path: sessionCwd
+          }, () => {})
+          await ensureTerminalWorkspaceGitignoreEntries(sessionCwd)
+        } catch (error) {
+          await fs.promises.rm(sessionCwd, { recursive: true, force: true }).catch(() => {})
+          failStart(500, error && error.message ? error.message : "Failed to initialize workspace.")
+        }
+      }
+      const copiedUploads = []
+      if (requestedUploadToken) {
+        const uploadDir = path.resolve(this.kernel.path("tmp", "create", requestedUploadToken))
+        const uploadStat = await fs.promises.stat(uploadDir).catch(() => null)
+        if (!uploadStat || !uploadStat.isDirectory()) {
+          failStart(400, "Uploaded files not found. Please add files again.")
+        }
+        try {
+          const uploadEntries = await fs.promises.readdir(uploadDir, { withFileTypes: true })
+          for (let i = 0; i < uploadEntries.length; i++) {
+            const entry = uploadEntries[i]
+            if (!entry || !entry.isFile()) {
+              continue
+            }
+            const sourceName = path.basename(entry.name || "")
+            if (!sourceName) {
+              continue
+            }
+            const sourcePath = path.resolve(uploadDir, sourceName)
+            if (!sourcePath.startsWith(uploadDir + path.sep)) {
+              continue
+            }
+            const targetPath = await resolveUploadCopyTarget(sessionCwd, sourceName)
+            await fs.promises.copyFile(sourcePath, targetPath)
+            const targetStat = await fs.promises.stat(targetPath).catch(() => null)
+            copiedUploads.push({
+              name: path.basename(targetPath),
+              size: targetStat && Number.isFinite(targetStat.size) ? targetStat.size : 0
+            })
+          }
+        } finally {
+          await fs.promises.rm(uploadDir, { recursive: true, force: true }).catch(() => {})
+        }
+      }
+
+      const skillContext = await materializeTerminalSkillContext(sessionCwd, provider.key, selectedSkills)
+      const metadataPath = path.resolve(sessionCwd, ".pinokio-terminal.json")
+      let existingMetadata = {}
+      try {
+        const rawMetadata = await fs.promises.readFile(metadataPath, "utf8")
+        const parsedMetadata = JSON.parse(rawMetadata)
+        if (parsedMetadata && typeof parsedMetadata === "object") {
+          existingMetadata = parsedMetadata
+        }
+      } catch (_) {
+      }
+      const previousSessions = Array.isArray(existingMetadata.sessions)
+        ? existingMetadata.sessions.filter((entry) => entry && typeof entry === "object")
+        : []
+      const currentSessionRecord = {
+        provider: provider.key,
+        label: provider.label,
+        terminal_id: terminalId,
+        created_at: now.toISOString(),
+        launch_mode: launchMode,
+        command: startCommand,
+        skill_context: skillContext && skillContext.activePath ? skillContext.activePath : null,
+        skills: skillContext && Array.isArray(skillContext.selected) ? skillContext.selected : [],
+        uploaded_files: copiedUploads
+      }
+      const nextSessions = previousSessions.concat([currentSessionRecord]).slice(-256)
+      await fs.promises.writeFile(metadataPath, JSON.stringify({
+        workspace: workspaceFolderName,
+        cwd: sessionCwd,
+        updated_at: now.toISOString(),
+        sessions: nextSessions
+      }, null, 2), "utf8")
+
+      const params = new URLSearchParams()
+      params.set("path", sessionCwd)
+      params.set("cwd", sessionCwd)
+      params.set("terminal_id", terminalId)
+      params.set("message", startCommand)
+      params.set("input", "1")
+      const safeWorkspaceName = workspaceFolderName && workspaceFolderName.trim().length > 0
+        ? workspaceFolderName.replace(/[^A-Za-z0-9._-]+/g, "-")
+        : "workspace"
+      const route = `/shell/start-${provider.key}-${safeWorkspaceName}-${runId}`
+      const url = `${route}?${params.toString()}`
+
+      // Persist an optimistic registry row immediately so list identity is canonical.
+      const optimisticUri = `${provider.key}:launch:${terminalId}`
+      const optimisticEntry = {
+        name: `${provider.label} · ${workspaceFolderName}`,
+        description: `${provider.label} · ${sessionCwd || "cwd unavailable"}`,
+        provider: provider.key,
+        uri: optimisticUri,
+        index: `launch:${terminalId}`,
+        url,
+        browser_url: url,
+        resume_capable: true,
+        resume_disabled_reason: null,
+        fork_url: "",
+        fork_capable: false,
+        fork_disabled_reason: "Fork disabled in workspace mode.",
+        filepath: sessionCwd || "",
+        provider_label: provider.label || provider.key || "Session",
+        cwd: sessionCwd || "",
+        workspace_name: workspaceFolderName || "",
+        workspace_path: sessionCwd || "",
+        summary: null,
+        timestamp: now.toISOString(),
+        terminal_id: terminalId,
+        launch_mode: launchMode,
+        command: startCommand
+      }
+      await upsertTerminalSessionRegistryEntry(optimisticEntry)
+      return {
+        ok: true,
+        provider: provider.key,
+        label: provider.label,
+        cwd: sessionCwd,
+        workspace: workspaceFolderName,
+        workspace_path: sessionCwd,
+        name: `${provider.label} · ${workspaceFolderName}`,
+        terminal_id: terminalId,
+        index: `launch:${terminalId}`,
+        uri: `${provider.key}:launch:${terminalId}`,
+        timestamp: now.toISOString(),
+        launch_mode: launchMode,
+        url,
+        skills: skillContext && Array.isArray(skillContext.selected)
+          ? skillContext.selected.map((skill) => ({ id: skill.id, label: skill.label }))
+          : [],
+        files: copiedUploads
+      }
+    }
+
+    this.app.post("/terminals/start", ex(async (req, res) => {
+      try {
+        const payload = await createManagedTerminalSession(req.body && typeof req.body === "object" ? req.body : {})
+        res.json(payload)
+      } catch (error) {
+        const status = Number.isInteger(error && error.status) ? error.status : 500
+        res.status(status).json({
+          error: error && error.message ? error.message : "Failed to start terminal session."
+        })
+      }
+    }))
+
 
     this.app.get("/bundle/:name", ex(async (req, res) => {
       let { requirements, install_required, requirements_pending, error } = await this.kernel.bin.check({
@@ -6030,7 +8075,7 @@ class Server {
         kernel: this.kernel,
       })
       /*
-      let config = structuredClone(this.kernel.proto.config)
+      let config = safeStructuredClone(this.kernel.proto.config)
       console.log(config)
       config = this.renderMenu2(config, {
         cwd: req.query.path,
@@ -6071,7 +8116,7 @@ class Server {
 //        description: "Connect with pinokio.co",
 //        url: "/connect/pinokio"
 //      }, {
-        emoji: "🤗",
+        icon: "fa-brands fa-hugging-face",
         name: "huggingface",
         title: "huggingface.co",
         description: "Connect with huggingface.co",
@@ -6510,6 +8555,25 @@ class Server {
         items
       })
     }))
+    this.app.get("/settings/docs/:skill/download", ex(async (req, res) => {
+      const skill = typeof req.params.skill === "string" ? req.params.skill.trim().toLowerCase() : ""
+      const docsBySkill = {
+        pinokio: path.resolve(os.homedir(), ".agents", "skills", "pinokio", "SKILL.md"),
+        gepeto: path.resolve(os.homedir(), ".agents", "skills", "gepeto", "SKILL.md"),
+      }
+      const filepath = docsBySkill[skill]
+      if (!filepath) {
+        res.status(404).send("Unknown skill")
+        return
+      }
+      try {
+        await fs.promises.access(filepath, fs.constants.R_OK)
+      } catch (error) {
+        res.status(404).send("Skill document not found")
+        return
+      }
+      res.download(filepath, `${skill}-SKILL.md`)
+    }))
     this.app.get("/docs", ex(async (req, res) => {
       let url = req.query.url
       const possiblePaths = [
@@ -6708,6 +8772,35 @@ class Server {
       let url = `/shell/${id}?${params.toString()}`
       res.redirect(url)
     }))
+    this.app.get("/terminals/gemini/fork", ex(async (req, res) => {
+      const source = typeof req.query.source === "string" ? req.query.source.trim() : ""
+      const expectedSessionId = typeof req.query.expected_session_id === "string" ? req.query.expected_session_id.trim() : ""
+      const resumeCommand = typeof req.query.resume_command === "string" ? req.query.resume_command.trim() : ""
+      const cwd = typeof req.query.cwd === "string" ? req.query.cwd.trim() : ""
+      const terminalId = typeof req.query.terminal_id === "string" ? req.query.terminal_id.trim() : ""
+      const routeIdRaw = typeof req.query.route_id === "string" ? req.query.route_id.trim() : ""
+      const routeId = /^[A-Za-z0-9:_-]+$/.test(routeIdRaw) ? routeIdRaw : ""
+      if (!source || !expectedSessionId || !resumeCommand || !cwd || !routeId) {
+        res.status(400).send("Gemini fork failed: missing required parameters.")
+        return
+      }
+      const forkedSessionId = await forkGeminiSessionFile(source, expectedSessionId)
+      const message = `${resumeCommand} --resume ${JSON.stringify(forkedSessionId)}`
+      const params = new URLSearchParams()
+      params.set("path", cwd)
+      params.set("cwd", cwd)
+      params.set("session", forkedSessionId)
+      if (terminalId) {
+        params.set("terminal_id", terminalId)
+      }
+      params.set("message", encodeURIComponent(message))
+      params.set("input", "1")
+      params.set("fork", "1")
+      if (typeof req.query.fork_nonce === "string" && req.query.fork_nonce.trim().length > 0) {
+        params.set("fork_nonce", req.query.fork_nonce.trim())
+      }
+      res.redirect(`/shell/${encodeURIComponent(routeId)}?${params.toString()}`)
+    }))
     this.app.get("/shell/:id", ex(async (req, res) => {
       /*
         req.query := {
@@ -6730,15 +8823,194 @@ class Server {
       GET /shell/:unix_path => shell id: 'shell/:unix_path'
       */
 
-      let baseShellId = "shell/" + decodeURIComponent(req.params.id)
+      const decodedRouteId = decodeURIComponent(req.params.id)
+      let baseShellId = decodedRouteId.startsWith("shell/")
+        ? decodedRouteId
+        : `shell/${decodedRouteId}`
       const sessionId = typeof req.query.session === "string" && req.query.session.length > 0 ? req.query.session : null
-      let id = baseShellId
-      if (sessionId) {
-        id = `${baseShellId}?session=${sessionId}`
+      let terminalId = typeof req.query.terminal_id === "string" && req.query.terminal_id.length > 0 ? req.query.terminal_id : null
+      const isForkRequest = req.query.fork === "1"
+      const normalizeTerminalId = (value) => {
+        return typeof value === "string" ? value.trim() : ""
       }
+      const parseTerminalIdFromShellId = (shellId) => {
+        if (typeof shellId !== "string" || shellId.length === 0) {
+          return ""
+        }
+        const separatorIndex = shellId.indexOf("?")
+        if (separatorIndex < 0) {
+          return ""
+        }
+        const queryString = shellId.slice(separatorIndex + 1).replace(/&amp;/g, "&")
+        try {
+          const params = new URLSearchParams(queryString)
+          return normalizeTerminalId(params.get("terminal_id"))
+        } catch (error) {
+          return ""
+        }
+      }
+      const parseSessionIdFromShellId = (shellId) => {
+        if (typeof shellId !== "string" || shellId.length === 0) {
+          return ""
+        }
+        const separatorIndex = shellId.indexOf("?")
+        if (separatorIndex < 0) {
+          return ""
+        }
+        const queryString = shellId.slice(separatorIndex + 1).replace(/&amp;/g, "&")
+        try {
+          const params = new URLSearchParams(queryString)
+          const sessionValue = params.get("session")
+          return typeof sessionValue === "string" ? sessionValue.trim() : ""
+        } catch (error) {
+          return ""
+        }
+      }
+      if (!terminalId) {
+        const parsedTerminalId = parseTerminalIdFromShellId(decodedRouteId) || parseTerminalIdFromShellId(baseShellId)
+        if (parsedTerminalId) {
+          terminalId = parsedTerminalId
+        }
+      }
+      const isLiveShell = (candidate) => {
+        return Boolean(candidate && candidate.done !== true && candidate.ptyProcess)
+      }
+      let id = baseShellId
+      if (sessionId || terminalId) {
+        const idParams = new URLSearchParams()
+        if (sessionId) {
+          idParams.set("session", sessionId)
+        }
+        if (terminalId) {
+          idParams.set("terminal_id", terminalId)
+        }
+        id = `${baseShellId}?${idParams.toString()}`
+      }
+      const allShells = this.kernel && this.kernel.shell && Array.isArray(this.kernel.shell.shells)
+        ? this.kernel.shell.shells
+        : []
+      const liveShells = allShells.filter((candidate) => isLiveShell(candidate))
+
+      let shell = null
+      const exactIds = [id]
+      if (!sessionId && !terminalId) {
+        exactIds.push(baseShellId)
+        if (decodedRouteId !== baseShellId) {
+          exactIds.push(decodedRouteId)
+        }
+        const rawShellId = baseShellId.startsWith("shell/") ? baseShellId.slice(6) : baseShellId
+        if (rawShellId) {
+          exactIds.push(rawShellId)
+        }
+      }
+      for (let i = 0; i < exactIds.length; i++) {
+        const candidateId = exactIds[i]
+        if (!candidateId) {
+          continue
+        }
+        const candidate = this.kernel.shell.get(candidateId)
+        if (isLiveShell(candidate)) {
+          shell = candidate
+          break
+        }
+      }
+      if (!shell) {
+        shell = liveShells.find((candidate) => {
+          const group = typeof candidate.group === "string" ? candidate.group : ""
+          if (!group) {
+            return false
+          }
+          return group === decodedRouteId || group === baseShellId
+        }) || null
+      }
+      if (!shell && terminalId) {
+        const normalizedRequestedTerminalId = normalizeTerminalId(terminalId)
+        shell = liveShells.find((candidate) => {
+          const candidateTerminalId = normalizeTerminalId(candidate.terminal_id) || parseTerminalIdFromShellId(candidate.id)
+          return Boolean(candidateTerminalId && candidateTerminalId === normalizedRequestedTerminalId)
+        }) || null
+      }
+
+      if (shell) {
+        id = typeof shell.id === "string" && shell.id.trim().length > 0 ? shell.id : id
+      }
+
+      const isManagedStartRoute = /(?:^|\/)start-/.test(decodedRouteId)
+      const isManagedTerminalRoute = /(?:^|\/)(?:start-|terminals-)/.test(decodedRouteId)
+      if (!shell && isManagedStartRoute && !terminalId) {
+        res.status(400).send("terminal_id is required for managed terminal routes.")
+        return
+      }
+      const normalizeProviderKey = (value) => {
+        const normalized = typeof value === "string" ? value.trim().toLowerCase() : ""
+        if (!normalized) {
+          return ""
+        }
+        if (normalized.includes("codex")) return "codex"
+        if (normalized.includes("claude")) return "claude"
+        if (normalized.includes("gemini")) return "gemini"
+        return normalized
+      }
+      const extractProviderFromRouteId = (routeId) => {
+        if (typeof routeId !== "string") {
+          return ""
+        }
+        const match = /(?:^|\/)(?:start-|terminals-)([A-Za-z0-9_-]+)-/.exec(routeId.trim())
+        if (!match || !match[1]) {
+          return ""
+        }
+        return normalizeProviderKey(match[1])
+      }
+      const effectiveSessionId = (sessionId && sessionId.trim().length > 0)
+        ? sessionId.trim()
+        : (shell ? parseSessionIdFromShellId(shell.id) : "")
+      if (isManagedTerminalRoute && terminalId && effectiveSessionId) {
+        await upsertTerminalSessionRegistryEntry({
+          terminal_id: terminalId,
+          provider_session_id: effectiveSessionId
+        }).catch(() => {})
+      }
+
       let target = req.query.target ? req.query.target : null
-      let cwd = this.kernel.path(this.kernel.api.filePath(decodeURIComponent(req.query.path)))
-      let message = req.query.message ? decodeURIComponent(req.query.message) : null
+      const rawPathParam = typeof req.query.path === "string" && req.query.path.length > 0
+        ? decodeURIComponent(req.query.path)
+        : ""
+      const rawCwdParam = typeof req.query.cwd === "string" && req.query.cwd.length > 0
+        ? decodeURIComponent(req.query.cwd)
+        : ""
+      const shellPath = shell && typeof shell.path === "string" && shell.path.length > 0
+        ? shell.path
+        : ""
+      const resolvedPath = rawPathParam || rawCwdParam || shellPath
+      let cwd = resolvedPath
+        ? this.kernel.path(this.kernel.api.filePath(resolvedPath))
+        : this.kernel.homedir
+      let message = null
+      if (typeof req.query.message === "string" && req.query.message.length > 0) {
+        try {
+          message = decodeURIComponent(req.query.message)
+        } catch (error) {
+          message = req.query.message
+        }
+      }
+      if (!message && shell && typeof shell.source_message !== "undefined" && shell.source_message !== null && !isForkRequest) {
+        message = shell.source_message
+      }
+      let restartMessage = message
+      const routeProviderKey = extractProviderFromRouteId(decodedRouteId)
+      const hasExplicitRestartMessage = typeof restartMessage === "string" && restartMessage.trim().length > 0
+      if (routeProviderKey && !hasExplicitRestartMessage) {
+        const restartProvider = getTerminalStarterProviders().find((provider) => normalizeProviderKey(provider && provider.key) === routeProviderKey)
+        if (restartProvider) {
+          const restartCandidate = buildTerminalStartCommand(
+            restartProvider,
+            restartProvider && restartProvider.defaultLaunchMode ? restartProvider.defaultLaunchMode : "guarded"
+          )
+          if (restartCandidate) {
+            restartMessage = restartCandidate
+          }
+        }
+      }
       //let message = req.query.message ? req.query.message : null
       let venv = req.query.venv ? decodeURIComponent(req.query.venv) : null
       let input = req.query.input ? true : false
@@ -6774,8 +9046,7 @@ class Server {
 //          pattern[key] = req.query[pattern_key]
 //        }
 //      }
-
-      let shell = this.kernel.shell.get(id)
+      await ensureCodexSelectedSkillFrontmatter(cwd).catch(() => {})
       res.render("shell", {
         target,
         filepath: cwd,
@@ -6784,6 +9055,7 @@ class Server {
         id,
         cwd,
         message,
+        restart_message: restartMessage,
         venv,
         conda: (conda_exists ? conda: null),
         env,
@@ -8163,24 +10435,31 @@ class Server {
           // if exec method exists 
           let mode
           if (item.run) {
-            for(let step of item.run) {
-              if (step.method === "exec") {
-                mode = "exec" 
-                break
-              }
-              if (step.method === "shell.run") {
-                mode = "shell"
-                break
-              }
-              if (step.method === "app.launch") {
-                mode = "launch"
-                break
+            const launchType = typeof item.launch_type === "string" ? item.launch_type.trim().toLowerCase() : ""
+            if (launchType === "desktop") {
+              mode = "launch_type.desktop"
+            } else if (launchType === "terminal") {
+              mode = "launch_type.terminal"
+            } else {
+              for(let step of item.run) {
+                if (step.method === "exec") {
+                  mode = "exec" 
+                  break
+                }
+                if (step.method === "shell.run") {
+                  mode = "shell"
+                  break
+                }
+                if (step.method === "app.launch") {
+                  mode = "launch"
+                  break
+                }
               }
             }
-            if (mode === "exec" || mode === "launch") {
+            if (mode === "launch_type.desktop" || mode === "exec" || mode === "launch") {
               item.type = "Open"
               exec_menus.push(item)
-            } else if (mode === "shell") {
+            } else if (mode === "launch_type.terminal" || mode === "shell") {
               item.type = "Start"
               shell_menus.push(item)
             }
@@ -8209,8 +10488,8 @@ class Server {
         },
         {
           icon: "fa-solid fa-arrow-up-right-from-square",
-          title: "IDE Agents",
-          subtitle: "Open the project in external IDEs",
+          title: "Desktop App Agents",
+          subtitle: "Open the project in external desktop apps",
           menu: exec_menus
         },
       ]
@@ -8310,8 +10589,76 @@ class Server {
       }
     }))
     this.app.get("/run/*", ex(async (req, res) => {
-      let pathComponents = req.params[0].split("/")
+      const runPath = typeof req.params[0] === "string" ? req.params[0] : ""
+      let pathComponents = runPath.split("/")
       req.base = this.kernel.homedir
+      const readQueryValue = (value) => {
+        if (Array.isArray(value)) {
+          const first = value[0]
+          if (typeof first === "string") {
+            return first.trim()
+          }
+          if (typeof first === "number" || typeof first === "boolean") {
+            return String(first).trim()
+          }
+          return ""
+        }
+        if (typeof value === "string") {
+          return value.trim()
+        }
+        if (typeof value === "number" || typeof value === "boolean") {
+          return String(value).trim()
+        }
+        return ""
+      }
+      const normalizedRunPath = runPath.replace(/^\/+/, "").split("?")[0].toLowerCase()
+      const providerByPath = {
+        "plugin/code/codex/pinokio.js": "codex",
+        "plugin/code/claude/pinokio.js": "claude",
+        "plugin/code/gemini/pinokio.js": "gemini"
+      }
+      const pluginProvider = providerByPath[normalizedRunPath] || ""
+      const promptValue = readQueryValue(req.query ? req.query.prompt : "")
+      const terminalIdValue = readQueryValue(req.query ? req.query.terminal_id : "")
+      const workspacePath = readQueryValue(req.query ? req.query.cwd : "")
+      let refererIsDev = false
+      const referer = req.get("referer")
+      if (typeof referer === "string" && referer.length > 0) {
+        try {
+          const refererUrl = new URL(referer)
+          refererIsDev = /^\/p\/[^/]+\/dev(?:$|\/)/.test(refererUrl.pathname || "")
+        } catch (_) {
+          refererIsDev = false
+        }
+      }
+      const shouldRewriteToManagedStart = Boolean(
+        pluginProvider &&
+        refererIsDev &&
+        workspacePath &&
+        !promptValue &&
+        !terminalIdValue
+      )
+      if (shouldRewriteToManagedStart) {
+        try {
+          const payload = await createManagedTerminalSession({
+            provider: pluginProvider,
+            workspacePath
+          })
+          if (payload && typeof payload.url === "string" && payload.url.length > 0) {
+            res.redirect(payload.url)
+            return
+          }
+        } catch (error) {
+          console.warn("[run-plugin-managed-dev] managed start error, fallback to legacy", {
+            provider: pluginProvider,
+            error: error && error.message ? error.message : error
+          })
+        }
+      }
+      // Strip dev-only marker so legacy /run semantics remain unchanged outside rewrite path.
+      if (req.query && Object.prototype.hasOwnProperty.call(req.query, "managed_dev")) {
+        delete req.query.managed_dev
+      }
       try {
         await this.render(req, res, pathComponents)
       } catch (e) {
@@ -8384,7 +10731,7 @@ class Server {
       let plugin_menu
       if (plugin) {
         if (plugin && plugin.menu && Array.isArray(plugin.menu)) {
-          plugin = structuredClone(plugin)
+          plugin = safeStructuredClone(plugin)
           let default_plugin_query
           if (req.query) {
             default_plugin_query = req.query
@@ -8500,6 +10847,31 @@ class Server {
       */
 
     }))
+    const handlePinokioEvent = ex(async (req, res) => {
+      const result = await this.desktopEventRouter.handle(req && req.body && typeof req.body === "object" ? req.body : {})
+      res.status(result.status).json(result.body)
+    })
+    const handlePinokioInject = ex(async (req, res) => {
+      const result = await this.injectRouter.handle(req && req.body && typeof req.body === "object" ? req.body : {})
+      res.status(result.status).json(result.body)
+    })
+    this.app.post("/pinokio/event", handlePinokioEvent)
+    this.app.post("/pinokio/inject", handlePinokioInject)
+    this.app.get("/pinokio/event/run/:token", ex(async (req, res) => {
+      const token = req && req.params && typeof req.params.token === "string" ? req.params.token : ""
+      const payload = this.desktopEventRouter.resolveRun(token)
+      if (!payload) {
+        res.status(404).json({
+          ok: false,
+          error: "Event run payload not found"
+        })
+        return
+      }
+      res.json({
+        ok: true,
+        ...payload
+      })
+    }))
     this.app.post("/pinokio/peer/announce_kill", ex(async (req, res) => {
       this.kernel.peer.kill(req.body.host)
     }))
@@ -8564,58 +10936,6 @@ class Server {
         res.json({})
       }
     }))
-
-
-    this.app.get("/info/apps", ex(async (req, res) => {
-      const apps = []
-      try {
-        const apipath = this.kernel.path("api")
-        const entries = await fs.promises.readdir(apipath, { withFileTypes: true })
-        for (const entry of entries) {
-          let type
-          try {
-            type = await Util.file_type(apipath, entry)
-          } catch (typeErr) {
-            console.warn('Failed to inspect api entry', entry.name, typeErr)
-            continue
-          }
-          if (!type || !type.directory) {
-            continue
-          }
-          try {
-            const meta = await this.kernel.api.meta(entry.name)
-            apps.push({
-              name: entry.name,
-              title: meta && meta.title ? meta.title : entry.name,
-              description: meta && meta.description ? meta.description : '',
-              icon: meta && meta.icon ? meta.icon : "/pinokio-black.png"
-            })
-          } catch (metaError) {
-            console.warn('Failed to load app metadata', entry.name, metaError)
-            apps.push({
-              name: entry.name,
-              title: entry.name,
-              description: '',
-              icon: "/pinokio-black.png"
-            })
-          }
-        }
-      } catch (enumerationError) {
-        console.warn('Failed to enumerate api apps for url dropdown', enumerationError)
-      }
-
-      apps.sort((a, b) => {
-        const at = (a.title || a.name || '').toLowerCase()
-        const bt = (b.title || b.name || '').toLowerCase()
-        if (at < bt) return -1
-        if (at > bt) return 1
-        return (a.name || '').localeCompare(b.name || '')
-      })
-
-      res.json({ apps })
-    }))
-
-
     this.app.get("/info/procs", ex(async (req, res) => {
       await this.kernel.processes.refresh()
 
@@ -9196,6 +11516,42 @@ class Server {
       delete info.shell_env
       delete info.memory
       res.json(info)
+    }))
+    this.app.get("/pinokio/path/:cmd", ex((req, res) => {
+      const resolved = this.kernel.which(req.params.cmd)
+      if (!resolved) {
+        res.status(404).json({ error: "Not found" })
+        return
+      }
+      res.json({ path: path.resolve(resolved) })
+    }))
+    this.app.get("/pinokio/debug/shell/env", ex((req, res) => {
+      const shellId = typeof req.query.id === "string" ? req.query.id.trim() : ""
+      if (!shellId) {
+        res.status(400).json({ error: "id is required" })
+        return
+      }
+      const shell = this.kernel && this.kernel.shell && typeof this.kernel.shell.get === "function"
+        ? this.kernel.shell.get(shellId)
+        : null
+      if (!shell) {
+        res.status(404).json({ error: "Shell not found" })
+        return
+      }
+      const env = shell.env && typeof shell.env === "object" ? shell.env : {}
+      const envEntries = Object.entries(env)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => [key, value == null ? "" : String(value)])
+      res.json({
+        shell: {
+          id: shell.id,
+          cmd: shell.cmd,
+          path: shell.path,
+          group: shell.group,
+          done: shell.done
+        },
+        env: Object.fromEntries(envEntries)
+      })
     }))
     this.app.get("/pinokio/port", ex(async (req, res) => {
       let port = await this.kernel.port()

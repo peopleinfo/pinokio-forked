@@ -364,8 +364,6 @@ class Api {
       delete this.running[requestPath]
       delete this.kernel.memory.local[requestPath]
     }
-
-
     this.ondata({
       id: req.params.id || requestPath,
       type: "disconnect"
@@ -924,6 +922,10 @@ class Api {
         git: this.parentGitURI(request.path),
         cwd,
         origin: request.origin,
+        caller: request.caller,
+        action: request.action,
+        args,
+        client: request.client,
         body: script 
       }
       // 7. resolve the rpc
@@ -1202,7 +1204,7 @@ class Api {
             index: i,
             total,
             type: "result",
-            data: result,
+            data: result
           })
 
 
@@ -1245,7 +1247,6 @@ class Api {
             console.log("The script was already canceled")
             return
           }
-
 
           if (typeof rpc.next === "undefined" || rpc.next === null) {
 

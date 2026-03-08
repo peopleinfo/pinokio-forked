@@ -525,6 +525,84 @@ const init = async (options, kernel) => {
   } else {
     root = kernel.homedir
   }
+  const writeSkillIfChanged = async (skillPath, content) => {
+    let shouldWrite = true
+    try {
+      const existingSkillContent = await fs.promises.readFile(skillPath, "utf8")
+      shouldWrite = existingSkillContent !== content
+    } catch (error) {
+      if (!(error && error.code === "ENOENT")) {
+        throw error
+      }
+    }
+
+    if (shouldWrite) {
+      await fs.promises.writeFile(skillPath, content, "utf8")
+    }
+  }
+  const syncSkillToAgentRoots = async (skillName, content) => {
+    const home = os.homedir()
+    const targetDirs = [
+      path.resolve(home, ".agents", "skills", skillName),
+      path.resolve(home, ".claude", "skills", skillName)
+    ]
+    for (let i = 0; i < targetDirs.length; i++) {
+      const skillDir = targetDirs[i]
+      const skillPath = path.resolve(skillDir, "SKILL.md")
+      await fs.promises.mkdir(skillDir, { recursive: true })
+      await writeSkillIfChanged(skillPath, content)
+    }
+  }
+  const syncGepetoSkillFromAgents = async () => {
+    const homeRoot = path.resolve(kernel.homedir)
+    if (path.resolve(root) !== homeRoot) {
+      return
+    }
+
+    const agentsPath = path.resolve(homeRoot, "AGENTS.md")
+    const agentsExists = await kernel.exists(agentsPath)
+    if (!agentsExists) {
+      return
+    }
+
+    let agentsContent = ""
+    try {
+      agentsContent = await fs.promises.readFile(agentsPath, "utf8")
+    } catch (error) {
+      if (error && error.code === "ENOENT") {
+        return
+      }
+      throw error
+    }
+    const skillFrontmatter = [
+      "---",
+      "name: gepeto",
+      "description: Guide for building 1-click launchers and building apps with launchers built-in using Pinokio",
+      "---"
+    ].join("\n")
+    const desiredSkillContent = `${skillFrontmatter}\n\n${agentsContent}`
+    await syncSkillToAgentRoots("gepeto", desiredSkillContent)
+  }
+  const syncPinokioSkillFromTemplate = async () => {
+    const homeRoot = path.resolve(kernel.homedir)
+    if (path.resolve(root) !== homeRoot) {
+      return
+    }
+
+    const templatePath = path.resolve(__dirname, "../prototype/system/SKILL_PINOKIO.md")
+    let templateContent
+    try {
+      templateContent = await fs.promises.readFile(templatePath, "utf8")
+    } catch (error) {
+      if (error && error.code === "ENOENT") {
+        return
+      }
+      throw error
+    }
+
+    await syncSkillToAgentRoots("pinokio", templateContent)
+  }
+
   let current = path.resolve(root, "ENVIRONMENT")
   let exists = await kernel.exists(current)
   if (exists) {
@@ -572,13 +650,17 @@ const init = async (options, kernel) => {
     ]
     const structure_path = kernel.path("prototype/system/structure/clone")
     const structure_content = await fs.promises.readFile(structure_path, "utf-8")
+    const proto_path = kernel.path("prototype")
+    const home_path = kernel.homedir
     const rendered_recipe = await kernel.renderFile(agentTemplatePath, {
       structure: structure_content,
       examples: kernel.path("prototype/system/examples"),
       browser_logs: kernel.path("logs/browser.log"),
       PINOKIO_DOCUMENTATION: kernel.path("prototype/PINOKIO.md"),
       PTERM_DOCUMENTATION: kernel.path("prototype/PTERM.md"),
-      app_root: root
+      app_root: root,
+      proto_path,
+      home_path,
     })
     for (const filename of agentFiles) {
       const destination = path.resolve(root, filename)
@@ -611,6 +693,10 @@ const init = async (options, kernel) => {
       await fs.promises.writeFile(geminiIgnorePath, geminiIgnoreContent)
     }
   }
+
+  // Keep agent skills in sync for the Pinokio home root
+  await syncGepetoSkillFromAgents()
+  await syncPinokioSkillFromTemplate()
 
   const gitDir = path.resolve(root, ".git")
   const gitDirExists = await kernel.exists(gitDir)

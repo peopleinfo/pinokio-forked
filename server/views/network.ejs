@@ -35,7 +35,7 @@ ol {
   padding-inline-start: 15px;
 }
 a.explain {
-  color: rgba(127, 91, 243, 0.9);
+  color: royalblue;
   text-decoration: underline; 
   cursor: pointer;
 }
@@ -126,12 +126,12 @@ header .runner {
   margin-top: 5px;
 }
 a.badge {
-  color: rgba(127, 91, 243, 0.9);
+  color: royalblue;
   text-decoration: none;
   cursor: pointer;
 }
 .badge a {
-  color: rgba(127, 91, 243, 0.9);
+  color: royalblue;
   text-decoration: none;
 }
 /*
@@ -147,7 +147,7 @@ body.dark .browser-options-row {
   border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 .description a {
-  color: rgba(127, 91, 243, 0.9);
+  color: royalblue;
   text-decoration: none;
 }
 a.ln[href^=https] {
@@ -215,11 +215,11 @@ a.ln:hover {
   box-sizing: border-box;
 }
 .container-row.current .header-label-sub {
-  color: rgba(127, 91, 243, 0.9);
+  color: royalblue;
 }
 /*
 .container-row.current .header-label-sub {
-  color: rgba(127, 91, 243, 0.9);
+  color: royalblue;
 }
 */
 .desc {
@@ -241,7 +241,7 @@ a.ln:hover {
   padding-top: 5px;
   padding-bottom: 0 !important;
   text-decoration: none;
-  color: rgba(127, 91, 243, 0.9);
+  color: royalblue;
   cursor: pointer;
 }
 .container-row table {
@@ -250,7 +250,7 @@ a.ln:hover {
 }
 table a {
   text-decoration: none;
-  color: rgba(127, 91, 243, 0.9);
+  color: royalblue;
 }
 td:first-child, th:first-child {
   max-width: 100px;
@@ -295,7 +295,7 @@ body.dark .config {
   align-items: stretch;
 }
 body.dark .config .btn {
-  background: rgba(127, 91, 243, 0.9);
+  background: royalblue;
 }
 .config .btn {
   font-size: 16px;
@@ -303,7 +303,7 @@ body.dark .config .btn {
   width: 100px;
   /*
   */
-  background: rgba(127, 91, 243, 0.9);
+  background: royalblue;
   flex-shrink: 0;
 }
 .config-row {
@@ -380,7 +380,7 @@ input:checked + .slider {
   background-color: #2196F3;
   background: black;
   */
-  background-color: rgba(127, 91, 243, 0.9);
+  background-color: royalblue;
 }
 
 input:focus + .slider {
@@ -471,7 +471,7 @@ body.dark aside .tab {
   color: white;
 }
 body.dark aside .tab:hover, aside .tab:hover {
-  color: rgba(127, 91, 243, 0.9) !important;
+  color: royalblue !important;
   opacity: 1;
 }
 aside .tab {
@@ -518,8 +518,8 @@ aside .current.selected {
   border-left: 10px solid transparent;
 }
 body.dark .net:hover, .net:hover {
-  color: rgba(127, 91, 243, 0.9);
-  border-left: 4px solid rgba(127, 91, 243, 0.9);
+  color: royalblue;
+  border-left: 4px solid royalblue;
 }
 body.dark .net {
   border-left: 3px solid white;
@@ -633,12 +633,12 @@ header .runner {
   margin-top: 5px;
 }
 a.badge {
-  color: rgba(127, 91, 243, 0.9);
+  color: royalblue;
   text-decoration: none;
   cursor: pointer;
 }
 .badge a {
-  color: rgba(127, 91, 243, 0.9);
+  color: royalblue;
   text-decoration: none;
 }
 body.dark .btn {
@@ -771,7 +771,7 @@ body.dark .open-menu, body.dark .browse {
   color: white !important;
 }
 .open-menu:hover, .browse:hover, body.dark .open-menu:hover, body.dark .browse:hover {
-  color: rgba(127, 91, 243, 0.9) !important;
+  color: royalblue !important;
 }
 .open-menu, .browse {
   width: 80px;
@@ -871,7 +871,7 @@ body.dark aside .tab {
   color: white;
 }
 body.dark aside .tab:hover, aside .tab:hover {
-  color: rgba(127, 91, 243, 0.9) !important;
+  color: royalblue !important;
   opacity: 1;
 }
 aside .tab {
@@ -911,8 +911,8 @@ aside .selected {
   padding: 0;
 }
 body.dark .net:hover, .net:hover {
-  color: rgba(127, 91, 243, 0.9);
-  border-left: 4px solid rgba(127, 91, 243, 0.9);
+  color: royalblue;
+  border-left: 4px solid royalblue;
 }
 body.dark .net {
   border-left: 3px solid white;
@@ -1189,29 +1189,7 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
   </div>
   </div>
-  <aside>
-    <div class='btn-tab'>
-      <button type='button' class='btn' id='create-launcher-button'><i class="fa-solid fa-plus"></i><div class='caption'>Create</div></button>
-      <a class='btn' id='explore' href="/home?mode=explore"><i class="fa-solid fa-globe"></i><div class='caption'>Community</div></a>
-    </div>
-  <a href="/home" class='tab'><i class='fas fa-laptop-code'></i><div class='caption'>This machine</div></a>
-  <a href="/network" class='tab selected'><i class="fa-solid fa-wifi"></i><div class='caption'>Local network</div></a>
-  <% if (list.length > 0) { %>
-    <% let brands = { win32: "windows", darwin: "apple", linux: "Linux" } %>
-    <% list.forEach(({ host, name, platform, processes }, index) => { %>
-        <a href="/net/<%=name%>" class='submenu tab'><i class="fa-brands fa-<%=brands[platform]%>"></i><div class='caption'><%=name%> (<%=current_host === host ? 'this machine' : host%>)</div></a>
-      <% }) %>
-  <% } %>
-  <a href="/connect" class='tab'><i class="fa-solid fa-plug"></i><div class='caption'>Login</div></a>
-  <a class='tab' href="<%=portal%>" target="_blank"><i class="fa-solid fa-question"></i><div class='caption'>Help</div></a>
-  <a class='tab' id='genlog' href="/logs"><i class="fa-solid fa-laptop-code"></i><div class='caption'>Logs</div></a>
-  <a class='tab' href="/checkpoints"><i class="fa-solid fa-clock-rotate-left"></i><div class='caption'>Checkpoints</div></a>
-  <a class='tab' href="/screenshots"><i class="fa-solid fa-camera"></i><div class='caption'>Screenshots</div></a>
-  <a class='tab' href="/tools"><i class="fa-solid fa-toolbox"></i><div class='caption'>Installed Tools</div></a>
-  <a class='tab' href="/agents"><i class="fa-solid fa-robot"></i><div class='caption'>Agents</div></a>
-  <a class='tab' href="/home?mode=settings"><i class="fa-solid fa-gear"></i><div class='caption'>Settings</div></a>
-  <%- include('partials/peer_access_points', { peer_access_points, peer_url, peer_qr }) %>
-</aside>
+  <%- include('partials/main_sidebar', { selected: 'network' }) %>
 </main>
 <script>
 let interval
