@@ -2,15 +2,17 @@ const fs = require('fs')
 const fetch = require('cross-fetch')
 const { rimraf } = require('rimraf')
 const decompress = require('decompress');
+const NODE_VERSION = "22.21.1"
+
 class Node {
+  description = "Installs Node.js and pnpm in the Pinokio environment."
   cmd() {
-    return "nodejs=22.21.1 pnpm"
+    return `nodejs=${NODE_VERSION} pnpm`
   }
   async install(req, ondata) {
     await this.kernel.bin.exec({
       message: [
         "conda clean -y --all",
-        //"conda install -y nodejs=20.17.0 pnpm -c conda-forge"
         `conda install -y -c conda-forge ${this.cmd()}`
       ]
     }, ondata)
@@ -18,7 +20,7 @@ class Node {
   async installed() {
     if (this.kernel.bin.installed.conda && this.kernel.bin.installed.conda_versions) {
       let version = this.kernel.bin.installed.conda_versions.nodejs
-      if (version !== "22.21.1") {
+      if (version !== NODE_VERSION) {
         return false
       }
     }

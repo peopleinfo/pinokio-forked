@@ -11,6 +11,173 @@ class AppRegistryService {
     this.kernel = kernel
   }
 
+  isLoopbackHostname(hostname = '') {
+    const normalized = String(hostname || '').trim().toLowerCase()
+    if (!normalized) {
+      return false
+    }
+    return normalized === 'localhost' ||
+      normalized === '0.0.0.0' ||
+      normalized === '::1' ||
+      normalized === '[::1]' ||
+      normalized.startsWith('127.')
+  }
+
+  normalizeSource(source = null) {
+    const protocolRaw = source && typeof source.protocol === 'string' ? source.protocol.trim().toLowerCase() : ''
+    const protocol = protocolRaw === 'https' ? 'https' : 'http'
+    const host = source && typeof source.host === 'string' ? source.host.trim() : ''
+    let hostname = ''
+    if (host) {
+      try {
+        hostname = new URL(`http://${host}`).hostname
+      } catch (_) {
+        hostname = ''
+      }
+    }
+    return {
+      protocol,
+      host,
+      hostname: hostname ? hostname.toLowerCase() : ''
+    }
+  }
+
+  findExternalHostEntries(port) {
+    const normalizedPort = Number.parseInt(String(port || ''), 10)
+    if (!Number.isFinite(normalizedPort) || normalizedPort <= 0) {
+      return []
+    }
+    const currentHost = this.kernel && this.kernel.peer ? this.kernel.peer.host : ''
+    const peerInfo = currentHost && this.kernel && this.kernel.peer && this.kernel.peer.info
+      ? this.kernel.peer.info[currentHost]
+      : null
+    const routerInfo = peerInfo && Array.isArray(peerInfo.router_info) ? peerInfo.router_info : []
+    const entries = []
+    const seen = new Set()
+    for (const item of routerInfo) {
+      if (!item || String(item.internal_port) !== String(normalizedPort)) {
+        continue
+      }
+      const externalHosts = Array.isArray(item.external_hosts) ? item.external_hosts : []
+      for (const externalHost of externalHosts) {
+        if (!externalHost || !externalHost.host || !externalHost.port) {
+          continue
+        }
+        const signature = `${externalHost.host}:${externalHost.port}`
+        if (seen.has(signature)) {
+          continue
+        }
+        seen.add(signature)
+        entries.push({
+          host: String(externalHost.host).trim(),
+          port: Number.parseInt(String(externalHost.port), 10),
+          scope: externalHost.scope || null,
+          interface: externalHost.interface || null
+        })
+      }
+      if (item.external_ip && typeof item.external_ip === 'string') {
+        try {
+          const parsed = new URL(`http://${item.external_ip}`)
+          const signature = `${parsed.hostname}:${parsed.port}`
+          if (!seen.has(signature) && parsed.hostname && parsed.port) {
+            seen.add(signature)
+            entries.push({
+              host: parsed.hostname,
+              port: Number.parseInt(parsed.port, 10),
+              scope: null,
+              interface: null
+            })
+          }
+        } catch (_) {}
+      }
+    }
+    return entries
+  }
+
+  sortExternalHostEntries(entries = [], source = null) {
+    const sourceInfo = this.normalizeSource(source)
+    const scopedEntries = Array.isArray(entries) ? entries.slice() : []
+    const scopeRank = (scope = '') => {
+      switch (String(scope || '').toLowerCase()) {
+        case 'lan':
+          return 0
+        case 'cgnat':
+          return 1
+        default:
+          return 2
+      }
+    }
+    return scopedEntries.sort((a, b) => {
+      const aHost = String(a && a.host ? a.host : '').toLowerCase()
+      const bHost = String(b && b.host ? b.host : '').toLowerCase()
+      const aMatchesCaller = sourceInfo.hostname && aHost === sourceInfo.hostname ? 1 : 0
+      const bMatchesCaller = sourceInfo.hostname && bHost === sourceInfo.hostname ? 1 : 0
+      if (aMatchesCaller !== bMatchesCaller) {
+        return bMatchesCaller - aMatchesCaller
+      }
+      const aScope = scopeRank(a && a.scope)
+      const bScope = scopeRank(b && b.scope)
+      if (aScope !== bScope) {
+        return aScope - bScope
+      }
+      return `${aHost}:${a && a.port ? a.port : ''}`.localeCompare(`${bHost}:${b && b.port ? b.port : ''}`)
+    })
+  }
+
+  buildExternalReadyUrls(url, source = null) {
+    if (!url || typeof url !== 'string') {
+      return []
+    }
+    const originalUrl = String(url)
+    let parsed
+    try {
+      parsed = new URL(originalUrl)
+    } catch (_) {
+      return []
+    }
+    const originalProtocol = parsed.protocol === 'https:' ? 'https:' : 'http:'
+    const hostname = (parsed.hostname || '').trim().toLowerCase()
+    if (!hostname || !this.isLoopbackHostname(hostname)) {
+      return []
+    }
+
+    const externalEntries = this.sortExternalHostEntries(this.findExternalHostEntries(parsed.port), source)
+    const results = []
+    const seen = new Set()
+    for (const entry of externalEntries) {
+      if (!entry || !entry.host || !entry.port) {
+        continue
+      }
+      const next = new URL(parsed.toString())
+      next.protocol = originalProtocol
+      next.hostname = entry.host
+      next.port = String(entry.port)
+      let nextUrl = next.toString()
+      if (/^https?:\/\/[^/?#]+$/i.test(originalUrl) && next.pathname === '/' && !next.search && !next.hash) {
+        nextUrl = nextUrl.replace(/\/$/, '')
+      }
+      if (seen.has(nextUrl)) {
+        continue
+      }
+      seen.add(nextUrl)
+      const item = {
+        url: nextUrl,
+        transport: 'ip',
+        scope: entry.scope || 'unknown'
+      }
+      if (entry.interface) {
+        item.interface = entry.interface
+      }
+      results.push(item)
+    }
+    return results
+  }
+
+  buildExternalReadyUrl(url, source = null) {
+    const externalReadyUrls = this.buildExternalReadyUrls(url, source)
+    return externalReadyUrls.length > 0 ? externalReadyUrls[0].url : null
+  }
+
   isPathWithin(parentPath, childPath) {
     if (!parentPath || !childPath) {
       return false
@@ -98,6 +265,7 @@ class AppRegistryService {
       ready: false,
       state: 'offline',
       ready_url: null,
+      external_ready_urls: [],
       ready_script: null,
       running_scripts: [],
       local_entries: []
@@ -203,50 +371,18 @@ class AppRegistryService {
   }
 
   async listInfoApps() {
-    const apps = []
     try {
-      const apipath = this.kernel.path('api')
-      const entries = await fs.promises.readdir(apipath, { withFileTypes: true })
-      for (const entry of entries) {
-        let type
-        try {
-          type = await Util.file_type(apipath, entry)
-        } catch (typeErr) {
-          console.warn('Failed to inspect api entry', entry.name, typeErr)
-          continue
-        }
-        if (!type || !type.directory) {
-          continue
-        }
-        try {
-          const meta = await this.kernel.api.meta(entry.name)
-          apps.push({
-            name: entry.name,
-            title: meta && meta.title ? meta.title : entry.name,
-            description: meta && meta.description ? meta.description : '',
-            icon: meta && meta.icon ? meta.icon : '/pinokio-black.png'
-          })
-        } catch (metaError) {
-          console.warn('Failed to load app metadata', entry.name, metaError)
-          apps.push({
-            name: entry.name,
-            title: entry.name,
-            description: '',
-            icon: '/pinokio-black.png'
-          })
-        }
-      }
-    } catch (enumerationError) {
-      console.warn('Failed to enumerate api apps for url dropdown', enumerationError)
+      const apps = await this.kernel.api.listApps()
+      return apps.map((app) => ({
+        name: app.name,
+        title: app.title,
+        description: app.description,
+        icon: app.icon
+      }))
+    } catch (error) {
+      console.warn('Failed to enumerate api apps for url dropdown', error)
+      return []
     }
-    apps.sort((a, b) => {
-      const at = (a.title || a.name || '').toLowerCase()
-      const bt = (b.title || b.name || '').toLowerCase()
-      if (at < bt) return -1
-      if (at > bt) return 1
-      return (a.name || '').localeCompare(b.name || '')
-    })
-    return apps
   }
 
   async buildAppStatus(appId, options = {}) {
@@ -275,6 +411,7 @@ class AppRegistryService {
     }
 
     const runtime = this.collectAppRuntime(appRoot)
+    runtime.external_ready_urls = this.buildExternalReadyUrls(runtime.ready_url, options.source || null)
     const installScript = await this.firstExistingScript(appRoot, ['install.js', 'install.json'])
     const startScript = await this.firstExistingScript(appRoot, ['start.js', 'start.json'])
     let defaultTarget = null
@@ -312,6 +449,7 @@ class AppRegistryService {
       running: runtime.running,
       ready,
       ready_url: runtime.ready_url,
+      external_ready_urls: runtime.external_ready_urls,
       state,
       running_scripts: runtime.running_scripts,
       ready_script: runtime.ready_script,

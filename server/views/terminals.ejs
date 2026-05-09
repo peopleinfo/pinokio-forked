@@ -661,70 +661,6 @@ body.dark .terminals-search-form {
   text-decoration: none;
 }
 
-.terminals-search-form .home-mode-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
-  padding: 0;
-  height: var(--terminals-top-control-height);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: var(--terminals-top-control-radius);
-  overflow: hidden;
-  background: rgba(0, 0, 0, 0.05);
-  box-sizing: border-box;
-}
-
-body.dark .terminals-search-form .home-mode-switch {
-  border-color: rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.terminals-search-form .home-mode-switch .mode-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 100%;
-  padding: 0 10px;
-  border-radius: 0;
-  text-decoration: none;
-  color: inherit;
-  border: none;
-  background: transparent;
-  font-weight: 400;
-  font-size: 12px;
-  opacity: 1;
-  line-height: 1;
-  box-sizing: border-box;
-}
-
-.terminals-search-form .home-mode-switch .mode-link + .mode-link {
-  border-left: 1px solid rgba(0, 0, 0, 0.14);
-}
-
-body.dark .terminals-search-form .home-mode-switch .mode-link + .mode-link {
-  border-left-color: rgba(255, 255, 255, 0.05);
-}
-
-.terminals-search-form .home-mode-switch .mode-link:hover {
-  background: rgba(65, 105, 225, 0.12);
-}
-
-body.dark .terminals-search-form .home-mode-switch .mode-link:hover {
-  background: rgba(65, 105, 225, 0.12);
-}
-
-.terminals-search-form .home-mode-switch .mode-link.selected,
-.terminals-search-form .home-mode-switch .mode-link[aria-current="page"] {
-  background: royalblue !important;
-  color: #fff !important;
-}
-
-body.dark .terminals-search-form .home-mode-switch .mode-link.selected,
-body.dark .terminals-search-form .home-mode-switch .mode-link[aria-current="page"] {
-  background: royalblue !important;
-  color: #fff !important;
-}
-
 #terminals-empty-main {
   border: 1px dashed rgba(127, 127, 127, 0.4);
   border-radius: 0;
@@ -1009,7 +945,7 @@ body.dark .terminals-list-intro-crumb-link:focus-visible {
   color: #f8fafc;
   font-size: 10px;
   line-height: 1;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   transition: opacity 120ms ease, transform 120ms ease;
   z-index: 6;
@@ -2168,6 +2104,9 @@ body.dark .terminals-list .line.active {
 .terminals-list .line .terminals-workspace-session-count-badge {
   min-width: 18px;
   height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
   background: rgba(37, 99, 235, 0.18);
   color: #1d4ed8;
@@ -2175,6 +2114,7 @@ body.dark .terminals-list .line.active {
   font-weight: 700;
   line-height: 18px;
   text-align: center;
+  white-space: nowrap;
   padding: 0 6px;
   flex-shrink: 0;
   box-sizing: border-box;
@@ -4297,16 +4237,6 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
 <main>
   <div class='container terminals-page'>
     <form class='search terminals-search-form'>
-      <div class="home-mode-switch" role="tablist" aria-label="Home modes">
-        <a class="mode-link" href="/home">
-          <i class="fa-solid fa-computer"></i>
-          <span>Apps</span>
-        </a>
-        <a class="mode-link selected" href="/home?mode=terminals" aria-current="page">
-          <i class="fa-solid fa-robot"></i>
-          <span>Agents</span>
-        </a>
-      </div>
       <div class="terminals-top-search-controls" id="terminals-top-search-controls">
         <div class="terminals-list-intro" id="terminals-top-list-intro">
           <div class="terminals-list-intro-progress" aria-hidden="true"></div>
@@ -4485,11 +4415,6 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
   const launcherDefaultSkillIds = new Set((Array.isArray(initialDefaultSkillIds) ? initialDefaultSkillIds : [])
     .map((value) => String(value || "").trim())
     .filter(Boolean))
-  const workspacesPeerAccessHtml = <%-JSON.stringify(include('partials/peer_access_points', {
-    peer_access_points: (typeof peer_access_points !== "undefined" ? peer_access_points : null),
-    peer_url: (typeof peer_url !== "undefined" ? peer_url : null),
-    peer_qr: (typeof peer_qr !== "undefined" ? peer_qr : null),
-  }))%>
   let availableSkills = Array.isArray(initialSkills) ? initialSkills : []
   let launcherSkillsLoading = false
   let launcherSkillsLoaded = Array.isArray(initialSkills) && initialSkills.length > 0
@@ -4733,69 +4658,6 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
   const escapeHtml = (raw = "") => {
     return String(raw).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("\"", "&quot;")
   }
-  const escapeModalHtml = (raw = "") => {
-    return String(raw)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll("\"", "&quot;")
-      .replaceAll("'", "&#39;")
-  }
-  const bindWorkspacePeerAccessPopups = (root) => {
-    if (!root) {
-      return
-    }
-    const links = root.querySelectorAll(".terminals-workspaces-header-access .qr > a")
-    links.forEach((link) => {
-      if (!link || link.dataset.peerAccessBound === "1") {
-        return
-      }
-      link.dataset.peerAccessBound = "1"
-      link.setAttribute("role", "button")
-      if (!link.querySelector(".peer-access-trigger-icon")) {
-        const icon = document.createElement("i")
-        icon.className = "fa-solid fa-qrcode peer-access-trigger-icon"
-        icon.setAttribute("aria-hidden", "true")
-        link.insertBefore(icon, link.firstChild)
-      }
-      link.addEventListener("click", async (event) => {
-        event.preventDefault()
-        event.stopPropagation()
-        const qrImg = link.querySelector("img")
-        const captions = link.querySelectorAll(".caption")
-        const label = captions.length > 0 ? String(captions[0].textContent || "").trim() : "Scan to open"
-        const rawUrl = captions.length > 1
-          ? String(captions[captions.length - 1].textContent || "").trim()
-          : String(link.getAttribute("href") || "").trim()
-        const url = rawUrl || String(link.getAttribute("href") || "").trim()
-        const qrSrc = (qrImg && qrImg.getAttribute("src"))
-          ? qrImg.getAttribute("src")
-          : (url ? `/qr?data=${encodeURIComponent(url)}&s=6&m=0` : "")
-        if (!qrSrc) {
-          if (url) {
-            window.open(url, "_blank", "noopener")
-          }
-          return
-        }
-        if (typeof Swal === "undefined" || !Swal || typeof Swal.fire !== "function") {
-          if (url) {
-            window.open(url, "_blank", "noopener")
-          }
-          return
-        }
-        await Swal.fire({
-          title: label || "Scan to open",
-          customClass: {
-            popup: "min-popup",
-            title: "min-title"
-          },
-          showConfirmButton: false,
-          html: `<div class='min-modal'><div><img src="${escapeModalHtml(qrSrc)}" style="width:256px; height:256px; image-rendering: pixelated;"></div>${url ? `<a href="${escapeModalHtml(url)}" target="_blank" rel="noopener">${escapeModalHtml(url)}</a>` : ""}</div>`
-        })
-      })
-    })
-  }
-
   const normalizeIndex = (value) => {
     return String(value || "").trim()
   }
@@ -5277,6 +5139,30 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
     const bn = (b && b.name ? String(b.name) : "").toLowerCase()
     return an.localeCompare(bn)
   }
+  const normalizeWorkspaceChatCount = (value) => {
+    const parsed = Number.parseInt(value, 10)
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      return null
+    }
+    return parsed
+  }
+  const getWorkspaceChatCount = (workspace) => {
+    const explicitCount = normalizeWorkspaceChatCount(
+      workspace && Object.prototype.hasOwnProperty.call(workspace, "chatCount")
+        ? workspace.chatCount
+        : (workspace && Object.prototype.hasOwnProperty.call(workspace, "chat_count")
+          ? workspace.chat_count
+          : "")
+    )
+    if (explicitCount !== null) {
+      return explicitCount
+    }
+    return workspace && Array.isArray(workspace.sessions) ? workspace.sessions.length : 0
+  }
+  const formatWorkspaceChatCount = (workspace) => {
+    const count = getWorkspaceChatCount(workspace)
+    return `${count} ${count === 1 ? "chat" : "chats"}`
+  }
   const getWorkspacePathFromSession = (session) => {
     if (!session || typeof session !== "object") {
       return ""
@@ -5296,6 +5182,42 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
     }
     const chunks = normalizedPath.split(/[\\/]/).filter(Boolean)
     return chunks.length > 0 ? chunks[chunks.length - 1] : normalizedPath
+  }
+  const bumpWorkspaceActivity = (workspacePath, timestamp = Date.now()) => {
+    const key = normalizeCwdKey(workspacePath)
+    if (!key) {
+      return false
+    }
+    const nextTimestamp = Number.isFinite(timestamp) && timestamp > 0 ? timestamp : Date.now()
+    let matched = false
+    workspaceFolders = (Array.isArray(workspaceFolders) ? workspaceFolders : []).map((workspace) => {
+      const workspaceKey = normalizeCwdKey(workspace && workspace.cwd ? workspace.cwd : "")
+      if (workspaceKey !== key) {
+        return workspace
+      }
+      matched = true
+      const currentTimestamp = parseTimestamp(
+        workspace && Object.prototype.hasOwnProperty.call(workspace, "updatedAt")
+          ? workspace.updatedAt
+          : (workspace && workspace.updated_at ? workspace.updated_at : null)
+      ) || 0
+      if (currentTimestamp >= nextTimestamp) {
+        return workspace
+      }
+      return {
+        ...workspace,
+        updatedAt: nextTimestamp
+      }
+    })
+    if (!matched) {
+      workspaceFolders.unshift({
+        name: getWorkspaceNameFromPath(workspacePath),
+        cwd: workspacePath,
+        updatedAt: nextTimestamp,
+        managed: false
+      })
+    }
+    return true
   }
   const buildWorkspaceItems = () => {
     const byKey = new Map()
@@ -5324,6 +5246,13 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
           key,
           cwd,
           name: fallback && fallback.name ? fallback.name : getWorkspaceNameFromPath(cwd),
+          chatCount: normalizeWorkspaceChatCount(
+            fallback && Object.prototype.hasOwnProperty.call(fallback, "chatCount")
+              ? fallback.chatCount
+              : (fallback && Object.prototype.hasOwnProperty.call(fallback, "chat_count")
+                ? fallback.chat_count
+                : "")
+          ),
           sessions: [],
           updatedAt: parseTimestamp(fallback && Object.prototype.hasOwnProperty.call(fallback, "updatedAt") ? fallback.updatedAt : (fallback && fallback.updated_at ? fallback.updated_at : null)),
           timestamp: null,
@@ -5355,7 +5284,8 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
       const entry = byKey.get(key)
       entry.sessions.push(session)
       const ts = parseTimestamp(session && session.timestamp ? session.timestamp : null) || 0
-      if (!parseTimestamp(entry && entry.updatedAt ? entry.updatedAt : null) && ts > 0) {
+      const currentUpdatedAt = parseTimestamp(entry && entry.updatedAt ? entry.updatedAt : null) || 0
+      if (ts > currentUpdatedAt) {
         entry.updatedAt = ts
       }
       const currentTs = parseTimestamp(entry.timestamp) || 0
@@ -8195,11 +8125,28 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
     if (!column) {
       return
     }
-    const terminalId = normalizeTerminalId(column.dataset.sessionTerminalId || "")
-    if (!terminalId) {
+    if (type === "terminal-input") {
       return
     }
-    if (type === "terminal-input") {
+    if (type === "idle") {
+      const workspacePath = normalizeIndex(column.dataset.sessionCwd || "")
+      if (workspacePath) {
+        fetchWorkspaceGitStatus(workspacePath, { force: true }).catch(() => {
+        })
+      }
+      refreshSessionItems({
+        sync: true,
+        query: currentSessionQuery,
+        workspaceKey: workspaceViewState.mode === "sessions" ? workspaceViewState.key : ""
+      }).then((loaded) => {
+        if (loaded || hasAttemptedSessionLoad) {
+          refreshChooserRows({ autoLoad: false })
+        }
+      })
+      return
+    }
+    const terminalId = normalizeTerminalId(column.dataset.sessionTerminalId || "")
+    if (!terminalId) {
       return
     }
     if (type === "stream" || type === "start") {
@@ -8222,18 +8169,6 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
           }
         }
       }
-      return
-    }
-    if (type === "idle") {
-      void refreshSessionItems({
-        sync: true,
-        query: currentSessionQuery,
-        workspaceKey: workspaceViewState.mode === "sessions" ? workspaceViewState.key : ""
-      }).then((loaded) => {
-        if (loaded || hasAttemptedSessionLoad) {
-          refreshChooserRows({ autoLoad: false })
-        }
-      })
       return
     }
     if (type === "disconnect") {
@@ -8403,10 +8338,30 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
           return false
         }
         if (payload && Array.isArray(payload.workspaces)) {
+          const existingWorkspaceUpdatedAtByKey = new Map(
+            (Array.isArray(workspaceFolders) ? workspaceFolders : [])
+              .map((workspace) => {
+                const key = normalizeCwdKey(workspace && workspace.cwd ? workspace.cwd : "")
+                const updatedAt = parseTimestamp(
+                  workspace && Object.prototype.hasOwnProperty.call(workspace, "updatedAt")
+                    ? workspace.updatedAt
+                    : (workspace && workspace.updated_at ? workspace.updated_at : null)
+                ) || 0
+                return key ? [key, updatedAt] : null
+              })
+              .filter(Boolean)
+          )
           workspaceFolders = payload.workspaces
             .map((workspace) => ({
               name: workspace && workspace.name ? String(workspace.name) : "",
               cwd: workspace && workspace.cwd ? String(workspace.cwd) : "",
+              chatCount: normalizeWorkspaceChatCount(
+                workspace && Object.prototype.hasOwnProperty.call(workspace, "chatCount")
+                  ? workspace.chatCount
+                  : (workspace && Object.prototype.hasOwnProperty.call(workspace, "chat_count")
+                    ? workspace.chat_count
+                    : "")
+              ),
               updatedAt: parseTimestamp(workspace && (workspace.updated_at || workspace.updatedAt) ? (workspace.updated_at || workspace.updatedAt) : null),
               managed: parseBooleanFlag(
                 workspace && Object.prototype.hasOwnProperty.call(workspace, "managed")
@@ -8420,6 +8375,18 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
               )
             }))
             .filter((workspace) => workspace.cwd)
+            .map((workspace) => {
+              const key = normalizeCwdKey(workspace.cwd)
+              const existingUpdatedAt = existingWorkspaceUpdatedAtByKey.get(key) || 0
+              const incomingUpdatedAt = parseTimestamp(workspace.updatedAt) || 0
+              if (existingUpdatedAt > incomingUpdatedAt) {
+                return {
+                  ...workspace,
+                  updatedAt: existingUpdatedAt
+                }
+              }
+              return workspace
+            })
         }
         const items = Array.isArray(payload && payload.items) ? payload.items : []
         if (append) {
@@ -8482,6 +8449,75 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
       }
     })()
     return refreshSessionPromise
+  }
+  const TERMINALS_DISCOVERY_REFRESH_SIGNAL_KEY = "pinokio.terminals.discovery.refresh"
+  let terminalsDiscoveryRefreshChannel = null
+  let lastTerminalsDiscoveryRefreshSignalId = ""
+  const normalizeTerminalsDiscoveryRefreshSignal = (payload) => {
+    if (!payload || typeof payload !== "object") {
+      return null
+    }
+    const workspaceKey = normalizeCwdKey(payload.workspaceCwd || "")
+    const ts = Number.parseInt(payload.ts, 10)
+    return {
+      workspaceKey,
+      ts: Number.isFinite(ts) && ts > 0 ? ts : Date.now()
+    }
+  }
+  const refreshSessionsFromTerminalsDiscoverySignal = (payload) => {
+    const normalized = normalizeTerminalsDiscoveryRefreshSignal(payload)
+    if (!normalized) {
+      return false
+    }
+    const signalId = `${normalized.workspaceKey}::${normalized.ts}`
+    if (signalId === lastTerminalsDiscoveryRefreshSignalId) {
+      return false
+    }
+    lastTerminalsDiscoveryRefreshSignalId = signalId
+    if (workspaceViewState.mode === "sessions") {
+      const activeWorkspaceKey = normalizeCwdKey(workspaceViewState.key)
+      if (!activeWorkspaceKey) {
+        return false
+      }
+      if (normalized.workspaceKey && activeWorkspaceKey !== normalized.workspaceKey) {
+        return false
+      }
+    }
+    if (normalized.workspaceKey) {
+      bumpWorkspaceActivity(normalized.workspaceKey, normalized.ts)
+      refreshChooserRows({ autoLoad: false })
+    }
+    void refreshSessionItems({
+      sync: true,
+      limit: getCurrentSessionRefreshLimit(),
+      query: workspaceViewState.mode === "sessions" ? "" : getSessionSearchQuery(),
+      workspaceKey: workspaceViewState.mode === "sessions" ? workspaceViewState.key : ""
+    }).then((loaded) => {
+      if (loaded || hasAttemptedSessionLoad) {
+        refreshChooserRows({ autoLoad: false })
+      }
+    })
+    return true
+  }
+  window.addEventListener("storage", (event) => {
+    if (!event || event.key !== TERMINALS_DISCOVERY_REFRESH_SIGNAL_KEY || !event.newValue) {
+      return
+    }
+    try {
+      const payload = JSON.parse(event.newValue)
+      refreshSessionsFromTerminalsDiscoverySignal(payload)
+    } catch (_) {
+    }
+  })
+  if (typeof window.BroadcastChannel === "function") {
+    try {
+      terminalsDiscoveryRefreshChannel = new window.BroadcastChannel(TERMINALS_DISCOVERY_REFRESH_SIGNAL_KEY)
+      terminalsDiscoveryRefreshChannel.addEventListener("message", (event) => {
+        refreshSessionsFromTerminalsDiscoverySignal(event ? event.data : null)
+      })
+    } catch (_) {
+      terminalsDiscoveryRefreshChannel = null
+    }
   }
   const loadMoreSessionItems = async () => {
     if (!sessionHasMore || sessionAppendInProgress) {
@@ -8740,11 +8776,11 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
     titleText.innerHTML = highlightMatches(workspace.name, query)
     titleLeft.appendChild(titleText)
     title.appendChild(titleLeft)
-    const count = workspace.sessions.length
+    const countLabel = formatWorkspaceChatCount(workspace)
     const countBadge = document.createElement("span")
     countBadge.className = "terminals-workspace-session-count-badge"
-    countBadge.textContent = String(count)
-    countBadge.setAttribute("aria-label", `${count} sessions`)
+    countBadge.textContent = countLabel
+    countBadge.setAttribute("aria-label", countLabel)
     title.appendChild(countBadge)
     const updatedAtLabel = formatTimeAgo(workspace && workspace.updatedAt ? workspace.updatedAt : null)
     const metaRow = document.createElement("div")
@@ -8889,6 +8925,8 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
         createWorkspaceButton.type = "button"
         createWorkspaceButton.className = "terminals-session-action terminals-workspace-create-btn"
         createWorkspaceButton.setAttribute("aria-label", "Create Sandbox")
+        createWorkspaceButton.hidden = true
+        createWorkspaceButton.setAttribute("aria-hidden", "true")
         createWorkspaceButton.innerHTML = '<i class="fa-solid fa-plus" aria-hidden="true"></i><span>Create Sandbox</span>'
         createWorkspaceButton.addEventListener("click", async (event) => {
           event.preventDefault()
@@ -8906,15 +8944,10 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
           }
         })
         workspacesHeaderActions.appendChild(createWorkspaceButton)
-
-        const peerAccessHtml = typeof workspacesPeerAccessHtml === "string" ? workspacesPeerAccessHtml.trim() : ""
-        if (peerAccessHtml) {
-          const peerAccessWrap = document.createElement("div")
-          peerAccessWrap.className = "terminals-workspaces-header-access"
-          peerAccessWrap.innerHTML = peerAccessHtml
-          workspacesHeaderActions.appendChild(peerAccessWrap)
-          bindWorkspacePeerAccessPopups(peerAccessWrap)
-        }
+      }
+      if (workspacesHeader) {
+        const hasVisibleActions = Array.from(workspacesHeaderActions.children).some((child) => !child.hidden)
+        workspacesHeader.classList.toggle("hidden", workspaceViewState.mode !== "workspaces" || !hasVisibleActions)
       }
     }
     if (sessionsHeader) {
@@ -9284,16 +9317,16 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
         </div>
       </header>` : ""}
       <div class="terminals-chooser-content">
+        <section class="terminals-workspaces-header hidden" aria-label="Agent workspaces intro">
+          <div class="terminals-workspace-header-actions terminals-workspaces-header-actions" data-workspaces-header-actions></div>
+        </section>
+        <section class="terminals-workspace-sessions-header hidden" aria-label="Workspace sessions intro">
+          <div class="terminals-list-intro-breadcrumb terminals-workspace-header-breadcrumb" data-workspace-header-breadcrumb aria-label="Workspace breadcrumb"></div>
+          <p data-workspace-header-path></p>
+          <div class="terminals-workspace-header-actions" data-workspace-header-actions></div>
+        </section>
         <div class="terminals-empty" data-state="loading" aria-live="polite"></div>
         <div class="terminals-list-wrap">
-          <section class="terminals-workspaces-header" aria-label="Agent workspaces intro">
-            <div class="terminals-workspace-header-actions terminals-workspaces-header-actions" data-workspaces-header-actions></div>
-          </section>
-          <section class="terminals-workspace-sessions-header hidden" aria-label="Workspace sessions intro">
-            <div class="terminals-list-intro-breadcrumb terminals-workspace-header-breadcrumb" data-workspace-header-breadcrumb aria-label="Workspace breadcrumb"></div>
-            <p data-workspace-header-path></p>
-            <div class="terminals-workspace-header-actions" data-workspace-header-actions></div>
-          </section>
           <div class="terminals-list"></div>
         </div>
       </div>
@@ -9558,7 +9591,9 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
     setColumnLayout()
     ensureLayout()
     refreshChooserRows()
-    void refreshSessionItems({
+    fetchWorkspaceGitStatus(targetWorkspaceKey, { force: true }).catch(() => {
+    })
+    refreshSessionItems({
       query: "",
       workspaceKey: targetWorkspaceKey
     }).then((loaded) => {
@@ -9889,6 +9924,10 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
       )
       topSessionRefreshButton.disabled = true
       try {
+        if (workspaceKey) {
+          fetchWorkspaceGitStatus(workspaceKey, { force: true }).catch(() => {
+          })
+        }
         const refreshed = await refreshSessionItems({
           sync: true,
           limit: getCurrentSessionRefreshLimit(),
@@ -9991,5 +10030,6 @@ body.dark .swal2-popup.pinokio-diff-modal .pinokio-modal-footer--commit .pinokio
   requestAnimationFrame(setViewport)
 })()
 </script>
+<script src="/drafts.js"></script>
 </body>
 </html>

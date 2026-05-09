@@ -20,6 +20,16 @@
   <link href="/electron.css" rel="stylesheet"/>
 <% } %>
 <style>
+:root {
+  --assist-surface-light: var(--pinokio-chrome-accent-bg-light);
+  --assist-surface-light-open: rgba(255, 255, 255, 0.65);
+  --assist-text-light: var(--pinokio-chrome-accent-fg-light);
+  --assist-text-light-open: #475569;
+  --assist-surface-dark: var(--pinokio-chrome-accent-bg-dark);
+  --assist-surface-dark-open: rgba(15, 17, 21, 0.7);
+  --assist-text-dark: var(--pinokio-chrome-accent-fg-dark);
+  --assist-text-dark-open: rgba(226, 232, 240, 0.84);
+}
 body.dark #devtab.selected {
   border: none;
   background: rgb(27, 28, 29) !important;
@@ -139,6 +149,62 @@ body {
   display: flex;
   flex-direction: column;
 }
+body.app-page {
+  --app-page-accent: var(--pinokio-chrome-accent-fg-light);
+  --app-page-selected-item-color: var(--pinokio-chrome-accent-fg-light);
+  --app-page-shell-bg: rgba(250, 251, 253, 0.78);
+  --app-page-shell-bg-strong: rgba(248, 250, 252, 0.9);
+  --app-page-panel-bg: rgba(248, 250, 252, 0.92);
+  --app-page-border: rgba(15, 23, 42, 0.12);
+  --app-page-selected-item-bg: white;
+  --app-page-surface-soft: color-mix(in srgb, var(--app-page-shell-bg-strong) 4%, transparent);
+  --app-page-surface-active: color-mix(in srgb, var(--app-page-shell-bg-strong) 6%, transparent);
+  --app-page-shell-gradient:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--app-page-accent) 10%, transparent), transparent 24rem),
+    linear-gradient(180deg, #fafbfd 0%, #f3f5f8 100%);
+  background: none;
+  min-height: 100vh;
+  position: relative;
+  isolation: isolate;
+}
+body.dark.app-page {
+  --app-page-accent: var(--pinokio-chrome-accent-fg-dark);
+  --app-page-selected-item-color: var(--pinokio-chrome-accent-fg-dark);
+  --app-page-shell-bg: rgba(10, 12, 16, 0.78);
+  --app-page-shell-bg-strong: rgba(12, 15, 21, 0.9);
+  --app-page-panel-bg: rgba(12, 15, 21, 0.92);
+  --app-page-border: rgba(255, 255, 255, 0.08);
+  --app-page-selected-item-bg: rgb(27, 28, 29);
+  --app-page-surface-soft: color-mix(in srgb, var(--app-page-shell-bg-strong) 4%, transparent);
+  --app-page-surface-active: color-mix(in srgb, var(--app-page-shell-bg-strong) 6%, transparent);
+  --app-page-shell-gradient:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--app-page-accent) 16%, transparent), transparent 24rem),
+    linear-gradient(180deg, #0a0c10 0%, #07090d 100%);
+  background: none;
+}
+body.app-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--app-page-shell-gradient);
+}
+body.dark.app-page::before {
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--app-page-accent) 16%, transparent), transparent 24rem),
+    linear-gradient(180deg, #0a0c10 0%, #07090d 100%);
+}
+body.app-page > header.navheader,
+body.app-page > header.navheader.minimized,
+body.app-page .navheader {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  backdrop-filter: none;
+  box-shadow: none;
+  isolation: isolate;
+}
 .menu {
   overflow: auto;
 }
@@ -190,6 +256,7 @@ body.dark .community-drawer {
   justify-content: center;
   cursor: col-resize;
   touch-action: none;
+  outline: none;
 }
 .community-resizer::before {
   content: '';
@@ -198,8 +265,14 @@ body.dark .community-drawer {
   margin: 6px 0;
   background: rgba(0,0,0,0.12);
 }
+.community-resizer:focus-visible::before {
+  background: rgba(59, 130, 246, 0.45);
+}
 body.dark .community-resizer::before {
   background: rgba(255,255,255,0.18);
+}
+body.dark .community-resizer:focus-visible::before {
+  background: rgba(96, 165, 250, 0.6);
 }
 .appcanvas.community-open .community-resizer {
   display: flex;
@@ -483,6 +556,7 @@ body.dark .ask-ai-drawer {
   justify-content: center;
   cursor: col-resize;
   touch-action: none;
+  outline: none;
 }
 .ask-ai-resizer::before {
   content: '';
@@ -491,8 +565,14 @@ body.dark .ask-ai-drawer {
   margin: 6px 0;
   background: rgba(0,0,0,0.12);
 }
+.ask-ai-resizer:focus-visible::before {
+  background: rgba(59, 130, 246, 0.45);
+}
 body.dark .ask-ai-resizer::before {
   background: rgba(255,255,255,0.18);
+}
+body.dark .ask-ai-resizer:focus-visible::before {
+  background: rgba(96, 165, 250, 0.6);
 }
 .appcanvas.panel-open .ask-ai-resizer {
   display: flex;
@@ -584,6 +664,11 @@ body.dark .ask-ai-drawer-location-input {
   flex-direction: column;
 }
 .ask-ai-drawer-empty {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -711,6 +796,7 @@ body.dark .event-launch-drawer {
   justify-content: center;
   cursor: col-resize;
   touch-action: none;
+  outline: none;
 }
 .event-launch-resizer::before {
   content: '';
@@ -719,8 +805,14 @@ body.dark .event-launch-drawer {
   margin: 6px 0;
   background: rgba(0,0,0,0.12);
 }
+.event-launch-resizer:focus-visible::before {
+  background: rgba(59, 130, 246, 0.45);
+}
 body.dark .event-launch-resizer::before {
   background: rgba(255,255,255,0.18);
+}
+body.dark .event-launch-resizer:focus-visible::before {
+  background: rgba(96, 165, 250, 0.6);
 }
 .appcanvas.event-drawer-open .event-launch-resizer {
   display: flex;
@@ -894,18 +986,27 @@ body.dark .appcanvas_filler {
   justify-content: center;
   cursor: col-resize;
   touch-action: none;
+  outline: none;
 }
+/*
 .appcanvas.vertical .appcanvas-resizer:hover::before {
   background: rgba(0, 0, 0, 0.15);
 }
+*/
 .appcanvas.vertical .appcanvas-resizer::before {
   content: '';
   width: 5px;
   border-radius: 999px;
   margin: 3px 0;
 }
+.appcanvas.vertical .appcanvas-resizer:focus-visible::before {
+  background: rgba(59, 130, 246, 0.45);
+}
 body.dark .appcanvas.vertical .appcanvas-resizer:hover::before {
   background: rgba(255, 255, 255, 0.3);
+}
+body.dark .appcanvas.vertical .appcanvas-resizer:focus-visible::before {
+  background: rgba(96, 165, 250, 0.6);
 }
 .appcanvas.vertical > aside .header-item {
   max-width: none;
@@ -1016,11 +1117,12 @@ body.dark .appcanvas > aside .menu-scroller.menu-scrollable.scroll-left::before 
 }
 .appcanvas > aside .menu-actions {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 6px;
   flex: 0 0 auto;
   margin-left: auto;
   padding-right: 6px;
+  padding-left: 6px;
   border-left: 1px solid rgba(0,0,0,0.08);
   background: transparent;
 }
@@ -1028,96 +1130,97 @@ body.dark .appcanvas > aside .menu-actions {
   border-left-color: rgba(255,255,255,0.08);
   background: transparent;
 }
-.appcanvas:not(.vertical) .menu-actions .header-item {
+.appcanvas > aside .menu-actions .header-item {
+  height: 100%;
   min-width: 0;
   padding: 4px 8px;
-  background: royalblue !important;
-  color: white !important;
+  border: 0 !important;
+  background: var(--assist-surface-light) !important;
+  color: var(--assist-text-light) !important;
+  box-shadow: none;
+  transition: none;
 }
-.appcanvas:not(.vertical) .menu-actions .header-item .display {
+body.dark .appcanvas > aside .menu-actions .header-item {
+  background: var(--assist-surface-dark) !important;
+  color: var(--assist-text-dark) !important;
+}
+.appcanvas > aside .menu-actions .header-item .display {
   display: block;
   font-size: 12px;
   white-space: nowrap;
+  font-weight: 700;
 }
-.appcanvas:not(.vertical) .menu-actions .header-item .flexible {
+.appcanvas > aside .menu-actions .header-item .flexible {
   display: none;
 }
-.appcanvas:not(.vertical) .menu-actions .header-item .tab {
-  gap: 6px;
+.appcanvas > aside .menu-actions .header-item .tab {
+  gap: 0;
 }
-.appcanvas:not(.vertical) .menu-actions .header-item .tab i {
+.appcanvas > aside .menu-actions .header-item .tab .menu-action-leading-icon {
   width: 16px;
-  text-align: center;
+  height: 16px;
+  flex: 0 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  margin-right: 5px;
 }
-.appcanvas:not(.vertical) .menu-actions .header-item:hover,
-.appcanvas:not(.vertical) .menu-actions .header-item:focus-visible {
-  background: royalblue !important;
-  color: white !important;
+.appcanvas > aside .menu-actions .header-item .tab i.menu-action-leading-icon {
+  font-size: 14px;
 }
-.appcanvas:not(.vertical) .menu-actions .header-item.selected {
-  background: royalblue !important;
-  color: white !important;
+.appcanvas > aside .menu-actions #community-toggle .menu-action-leading-icon {
+  margin-right: 3px;
+  font-size: 15px;
 }
-body.dark .appcanvas:not(.vertical) .menu-actions .header-item {
-  background: royalblue !important;
-  color: white !important;
+.appcanvas > aside .menu-actions .header-item .tab .ask-ai-brand-icon {
+  background: currentColor;
+  -webkit-mask: url('/pinokio-mark.svg') center / contain no-repeat;
+  mask: url('/pinokio-mark.svg') center / contain no-repeat;
 }
-body.dark .appcanvas:not(.vertical) .menu-actions .header-item:hover,
-body.dark .appcanvas:not(.vertical) .menu-actions .header-item:focus-visible {
-  background: royalblue !important;
-  color: white !important;
+.appcanvas > aside .menu-actions .header-item:hover,
+.appcanvas > aside .menu-actions .header-item:focus-visible {
+  background: var(--assist-surface-light) !important;
+  color: var(--assist-text-light) !important;
+  box-shadow: none;
 }
-body.dark .appcanvas:not(.vertical) .menu-actions .header-item.selected {
-  background: royalblue !important;
-  color: white !important;
-}
-.appcanvas.vertical .menu-actions .header-item {
-  background: royalblue !important;
-  color: white !important;
-}
-.appcanvas.vertical .menu-actions .header-item:hover,
-.appcanvas.vertical .menu-actions .header-item:focus-visible,
-.appcanvas.vertical .menu-actions .header-item.selected {
-  background: royalblue !important;
-  color: white !important;
-}
-body.dark .appcanvas.vertical .menu-actions .header-item {
-  background: royalblue !important;
-  color: white !important;
-}
-body.dark .appcanvas.vertical .menu-actions .header-item:hover,
-body.dark .appcanvas.vertical .menu-actions .header-item:focus-visible,
-body.dark .appcanvas.vertical .menu-actions .header-item.selected {
-  background: royalblue !important;
-  color: white !important;
+body.dark .appcanvas > aside .menu-actions .header-item:hover,
+body.dark .appcanvas > aside .menu-actions .header-item:focus-visible {
+  background: var(--assist-surface-dark) !important;
+  color: var(--assist-text-dark) !important;
+  box-shadow: none;
 }
 .appcanvas.community-open .menu-actions #community-toggle,
 .appcanvas.community-open .menu-actions #community-toggle:hover,
 .appcanvas.community-open .menu-actions #community-toggle:focus-visible,
 .appcanvas.community-open .menu-actions #community-toggle.selected {
-  background: #f7f8fa !important;
-  color: #334155 !important;
+  background: var(--assist-surface-light-open) !important;
+  color: var(--assist-text-light-open) !important;
+  box-shadow: none;
 }
 body.dark .appcanvas.community-open .menu-actions #community-toggle,
 body.dark .appcanvas.community-open .menu-actions #community-toggle:hover,
 body.dark .appcanvas.community-open .menu-actions #community-toggle:focus-visible,
 body.dark .appcanvas.community-open .menu-actions #community-toggle.selected {
-  background: #0f1115 !important;
-  color: rgba(226, 232, 240, 0.92) !important;
+  background: var(--assist-surface-dark-open) !important;
+  color: var(--assist-text-dark-open) !important;
+  box-shadow: none;
 }
 .appcanvas.panel-open .menu-actions #ask-ai-tab,
 .appcanvas.panel-open .menu-actions #ask-ai-tab:hover,
 .appcanvas.panel-open .menu-actions #ask-ai-tab:focus-visible,
 .appcanvas.panel-open .menu-actions #ask-ai-tab.selected {
-  background: #f8fafc !important;
-  color: #334155 !important;
+  background: var(--assist-surface-light-open) !important;
+  color: var(--assist-text-light-open) !important;
+  box-shadow: none;
 }
 body.dark .appcanvas.panel-open .menu-actions #ask-ai-tab,
 body.dark .appcanvas.panel-open .menu-actions #ask-ai-tab:hover,
 body.dark .appcanvas.panel-open .menu-actions #ask-ai-tab:focus-visible,
 body.dark .appcanvas.panel-open .menu-actions #ask-ai-tab.selected {
-  background: #0f1115 !important;
-  color: rgba(226, 232, 240, 0.92) !important;
+  background: var(--assist-surface-dark-open) !important;
+  color: var(--assist-text-dark-open) !important;
+  box-shadow: none;
 }
 .appcanvas.vertical .menu-scroller {
   flex-direction: column;
@@ -1125,6 +1228,16 @@ body.dark .appcanvas.panel-open .menu-actions #ask-ai-tab.selected {
   overflow-y: auto;
   overflow-x: hidden;
   width: 100%;
+}
+.appcanvas.vertical .active-nested-path {
+  flex-direction: column;
+  width: 100%;
+}
+.appcanvas.vertical .active-nested-path .m {
+  width: 100%;
+}
+.appcanvas.vertical .active-nested-path .header-item {
+  max-width: none;
 }
 .appcanvas.vertical .menu-actions {
   flex-direction: column;
@@ -1161,6 +1274,41 @@ body.dark .appcanvas > aside .menu-scroller::-webkit-scrollbar-thumb {
   min-width: 0;
 }
 
+.appcanvas > aside .active-nested-path {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.appcanvas > aside .active-nested-path.hidden {
+  display: none;
+}
+
+.appcanvas > aside .active-nested-path .m {
+  flex: 0 0 auto;
+}
+
+.appcanvas > aside .active-nested-path .header-item {
+  max-width: none;
+}
+
+.appcanvas > aside .active-nested-path .header-item.is-current {
+  font-weight: bold;
+  color: var(--pinokio-sidebar-tab-active-color);
+  box-shadow: 0 4px 12px var(--pinokio-sidebar-tab-shadow);
+  background: white !important;
+  border-bottom: none;
+  z-index: 1;
+}
+
+body.dark .appcanvas > aside .active-nested-path .header-item.is-current {
+  background: rgb(27, 28, 29) !important;
+  border: none;
+  box-shadow: rgba(67, 71, 85, 0.27) 0px 0px 0.25em, rgba(90, 125, 188, 0.05) 0px 0.25em 1em;
+}
+
 .appcanvas > aside .header-item {
 /*
   flex: 1 1 220px;
@@ -1171,7 +1319,6 @@ body.dark .appcanvas > aside .menu-scroller::-webkit-scrollbar-thumb {
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
-  border-radius: var(--sidebar-tab-radius);
   border: 1px solid transparent;
   background: transparent;
   color: var(--pinokio-sidebar-tab-muted);
@@ -1196,8 +1343,8 @@ body.dark .appcanvas > aside .menu-scroller::-webkit-scrollbar-thumb {
   border-radius: 12px;
   */
   border: 1px solid var(--pinokio-sidebar-tabbar-border);
-  background: var(--pinokio-sidebar-tab-active-bg);
-  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+  background: #ffffff;
+  box-shadow: 0 18px 36px color-mix(in srgb, var(--pinokio-sidebar-tab-shadow) 85%, transparent);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1208,9 +1355,9 @@ body.dark .appcanvas > aside .menu-scroller::-webkit-scrollbar-thumb {
 }
 
 body.dark .appcanvas > aside .m.menu .nested-menu > .submenu {
-  background: rgba(15, 23, 42, 0.98);
-  border-color: rgba(59, 130, 246, 0.22);
-  box-shadow: 0 26px 50px rgba(2, 8, 23, 0.6);
+  background: rgba(27, 28, 29, 0.96);
+  border-color: rgba(67, 71, 85, 0.52);
+  box-shadow: 0 20px 42px color-mix(in srgb, var(--pinokio-sidebar-tab-shadow) 92%, transparent);
 }
 
 .appcanvas > aside .m.menu .nested-menu > .submenu.hidden {
@@ -1225,7 +1372,7 @@ body.dark .appcanvas > aside .m.menu .nested-menu > .submenu {
 }
 
 body.dark .appcanvas > aside .m.menu .nested-menu.is-open > .reveal {
-  background: rgba(15, 23, 42, 0.98);
+  background: rgba(27, 28, 29, 0.98);
   color: var(--pinokio-sidebar-tab-active-color);
   border-color: rgba(59, 130, 246, 0.28);
 }
@@ -1291,7 +1438,7 @@ body.dark .appcanvas > aside .m.menu .nested-menu > .submenu .frame-link:hover {
 
 .appcanvas > aside .m.menu .nested-menu .submenu .nested-menu > .reveal .loader::before {
   content: "\f105";
-  font-family: "Font Awesome 6 Free";
+  font-family: var(--fa-family-classic, "Font Awesome 7 Free");
   font-weight: 900;
   font-size: 13px;
   color: currentColor;
@@ -1820,6 +1967,62 @@ body.dark .grid-btns .btn2 {
 .tab.has-preview .tab-updated .label {
   display: inline-block;
 }
+.appcanvas > aside .dynamic .submenu .tab.has-preview {
+  align-items: flex-start;
+  gap: 0;
+  padding-right: 0;
+}
+.appcanvas > aside .dynamic .submenu .tab.has-preview .tab-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "icon title"
+    "icon details";
+  column-gap: 8px;
+  row-gap: 1px;
+  align-items: start;
+}
+.appcanvas > aside .dynamic .submenu .tab.has-preview .tab-main > i:first-child,
+.appcanvas > aside .dynamic .submenu .tab.has-preview .tab-main > img.menu-item-image:first-child {
+  grid-area: icon;
+  margin-right: 0;
+  align-self: start;
+}
+.appcanvas > aside .dynamic .submenu .tab.has-preview .tab-main > .display {
+  grid-area: title;
+  min-width: 0;
+}
+.appcanvas > aside .dynamic .submenu .tab.has-preview .tab-main .tab-details {
+  grid-area: details;
+  gap: 0;
+}
+.appcanvas > aside .dynamic .submenu .tab.has-preview .tab-preview {
+  margin-top: 0;
+  font-size: 11px;
+  line-height: 1.12;
+  font-weight: 500;
+}
+.appcanvas > aside .dynamic .submenu .tab.has-preview .tab-preview:empty {
+  display: none;
+}
+.appcanvas > aside .dynamic .submenu .tab.has-preview .tab-updated {
+  margin-top: 0;
+  font-size: 11px;
+  line-height: 1.08;
+  font-weight: 500;
+}
+.appcanvas > aside .dynamic .submenu .tab.has-preview .tab-updated .indicator {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+}
+.appcanvas > aside .dynamic .submenu .tab.has-preview .tab-updated .label {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 @keyframes pulse {
   0% { opacity: 0.4; transform: scale(0.9); }
   50% { opacity: 1; transform: scale(1); }
@@ -1876,6 +2079,59 @@ body.dark .dynamic .submenu {
   /*
   border-left: 5px solid black;
   */
+}
+.appcanvas.vertical > aside .dynamic .submenu .header-item {
+  align-items: flex-start;
+}
+.appcanvas.vertical > aside .dynamic .submenu .frame-link,
+.appcanvas.vertical > aside .dynamic .submenu .header-item {
+  padding-top: 6px;
+  padding-bottom: 5px;
+}
+.appcanvas.vertical > aside .dynamic .submenu .header-item .tab:not(.has-preview),
+.appcanvas.vertical > aside .dynamic .submenu .frame-link .tab:not(.has-preview) {
+  display: block;
+  padding-right: 0;
+  overflow: hidden;
+  white-space: normal;
+  text-overflow: clip;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.appcanvas.vertical > aside .dynamic .submenu .header-item .tab:not(.has-preview)::after,
+.appcanvas.vertical > aside .dynamic .submenu .frame-link .tab:not(.has-preview)::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+.appcanvas.vertical > aside .dynamic .submenu .header-item .tab:not(.has-preview) > i:first-child,
+.appcanvas.vertical > aside .dynamic .submenu .header-item .tab:not(.has-preview) > img.menu-item-image:first-child,
+.appcanvas.vertical > aside .dynamic .submenu .frame-link .tab:not(.has-preview) > i:first-child,
+.appcanvas.vertical > aside .dynamic .submenu .frame-link .tab:not(.has-preview) > img.menu-item-image:first-child {
+  float: left;
+  margin-top: 1px;
+}
+.appcanvas.vertical > aside .dynamic .submenu .header-item .loader {
+  margin-top: 1px;
+}
+.appcanvas.vertical > aside .dynamic .submenu .tab-link-popover-host > .loader,
+.appcanvas.vertical > aside .dynamic .submenu .tab-link-popover-host > .tab-link-popover-trigger {
+  align-self: flex-start;
+  margin-top: 0;
+  min-width: 18px;
+  width: 18px;
+  height: 18px;
+}
+.appcanvas.vertical > aside .dynamic .submenu .tab-link-popover-host > .loader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+.appcanvas.vertical > aside .dynamic .submenu .tab-link-popover-host > .loader i,
+.appcanvas.vertical > aside .dynamic .submenu .tab-link-popover-host > .tab-link-popover-trigger i {
+  display: block;
+  line-height: 1;
+  margin-top: 1px;
 }
 .menu-item-image {
   width: 20px !important;
@@ -2565,6 +2821,108 @@ body.dark .fs-status-btn:hover {
   align-items: center;
   justify-content: center;
   pointer-events: none;
+}
+body.app-page .appcanvas {
+  background: transparent;
+}
+body.app-page .appcanvas > aside,
+body.dark.app-page .appcanvas > aside {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+body.app-page .appcanvas > .container,
+body.app-page .browserview-shell {
+  background: transparent;
+}
+body.app-page .appcanvas_filler {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none;
+}
+body.app-page .disk-usage {
+  border-right-color: color-mix(in srgb, var(--app-page-border) 85%, transparent);
+}
+body.app-page .appcanvas > aside .active-nested-path .header-item.is-current,
+body.app-page .appcanvas > aside .menu-scroller .header-item.selected,
+body.app-page .appcanvas > aside .menu-scroller .frame-link.selected,
+body.app-page #devtab.selected {
+  font-weight: bold;
+  color: var(--app-page-selected-item-color);
+  border-bottom: none;
+  z-index: 1;
+}
+body.app-page .appcanvas > aside .m.menu .nested-menu.is-open > .reveal {
+  color: var(--app-page-selected-item-color);
+}
+body.light.app-page .appcanvas > aside .active-nested-path .header-item.is-current,
+body.light.app-page .appcanvas > aside .menu-scroller .header-item.selected,
+body.light.app-page .appcanvas > aside .menu-scroller .frame-link.selected,
+body.light.app-page #devtab.selected {
+  background: var(--app-page-selected-item-bg) !important;
+  border: none;
+  box-shadow: 0 4px 12px var(--pinokio-sidebar-tab-shadow);
+}
+body.dark.app-page .appcanvas > aside .active-nested-path .header-item.is-current,
+body.dark.app-page .appcanvas > aside .menu-scroller .header-item.selected,
+body.dark.app-page .appcanvas > aside .menu-scroller .frame-link.selected,
+body.dark.app-page #devtab.selected {
+  background: var(--app-page-selected-item-bg) !important;
+  border: none;
+  box-shadow: rgba(67, 71, 85, 0.27) 0px 0px 0.25em, rgba(90, 125, 188, 0.05) 0px 0.25em 1em;
+}
+body.light.app-page .appcanvas > aside .m.menu .nested-menu.is-open > .reveal {
+  background: var(--pinokio-sidebar-tab-active-bg);
+  border-color: var(--sidebar-tab-outline);
+  box-shadow: 0 4px 12px var(--pinokio-sidebar-tab-shadow);
+}
+body.dark.app-page .appcanvas > aside .m.menu .nested-menu.is-open > .reveal {
+  background: rgba(27, 28, 29, 0.98);
+  border-color: rgba(59, 130, 246, 0.28);
+  box-shadow: none;
+}
+body.app-page #fs-status {
+  margin-bottom: 0;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: inset 0 -1px 0 var(--app-page-border);
+}
+body.app-page .fs-dropdown-menu {
+  border-color: var(--app-page-border);
+  background: var(--app-page-panel-bg);
+}
+body.app-page .ask-ai-drawer,
+body.app-page .event-launch-drawer,
+body.app-page .community-drawer {
+  border-left-color: var(--app-page-border);
+  background: var(--app-page-panel-bg);
+}
+body.app-page .appcanvas.event-bottom-open .event-launch-drawer {
+  border-top-color: var(--app-page-border);
+}
+body.app-page .ask-ai-drawer-bar,
+body.app-page .event-launch-drawer-bar,
+body.app-page .community-drawer-bar {
+  border-bottom-color: var(--app-page-border);
+  background: var(--app-page-shell-bg-strong);
+  backdrop-filter: none;
+}
+body.app-page .ask-ai-drawer-location,
+body.app-page .community-drawer-location {
+  border-bottom-color: var(--app-page-border);
+  background: var(--app-page-shell-bg);
+}
+/*
+body.app-page .ask-ai-resizer::before,
+body.app-page .event-launch-resizer::before,
+body.app-page .community-resizer::before,
+body.app-page .appcanvas.vertical .appcanvas-resizer::before {
+  background: color-mix(in srgb, var(--app-page-border) 90%, transparent);
+}
+*/
+body.app-page .appcanvas.vertical .appcanvas-resizer::before {
+  background: var(--app-page-selected-item-bg);
 }
 
 /* Remote selection modal styles */
@@ -4355,6 +4713,18 @@ header.navheader .mode-selector .community-mode-toggle {
   :root {
     --mobile-bottom-bar-height: calc(33px + env(safe-area-inset-bottom));
   }
+  .appcanvas.vertical {
+    flex-direction: column;
+  }
+  .appcanvas.vertical aside {
+    flex-direction: column;
+  }
+  .appcanvas.vertical .menu-container {
+    width: 100%;
+  }
+  .appcanvas-resizer {
+    display: none !important;
+  }
   header.navheader {
     position: fixed !important;
     left: -10000px !important;
@@ -4371,9 +4741,6 @@ header.navheader .mode-selector .community-mode-toggle {
   body:not(.mobile-menu-open) .appcanvas > aside {
     display: none;
   }
-  body:not(.mobile-menu-open) .appcanvas-resizer {
-    display: none;
-  }
   body.mobile-menu-open #menu-mobile-close {
     display: inline-flex;
   }
@@ -4384,12 +4751,14 @@ header.navheader .mode-selector .community-mode-toggle {
     box-sizing: border-box;
   }
   .mobile-bottom-nav {
-    position: relative;
+    position: sticky;
+    bottom: 0;
     display: flex;
     flex: 0 0 auto;
     align-items: center;
     gap: 3px;
     width: 100%;
+    margin-top: auto;
     min-height: 32px;
     padding: 0 4px env(safe-area-inset-bottom) 4px;
     border-top: 1px solid rgba(0,0,0,0.08);
@@ -4735,6 +5104,7 @@ header.navheader .mode-selector .community-mode-toggle {
 }
 </style>
 <link href="/app.css" rel="stylesheet"/>
+<link href="/browser-popout-surface.css" rel="stylesheet"/>
 <link href="/tab-link-popover.css" rel="stylesheet"/>
 <script src="/window_storage.js"></script>
 <script src="/timeago.min.js"></script>
@@ -4760,6 +5130,7 @@ header.navheader .mode-selector .community-mode-toggle {
 <script src="/popper.min.js"></script>
 <script src="/tippy-bundle.umd.min.js"></script>
 <script src="/tab-link-popover.js"></script>
+<script src="/browser-popout-surface.js"></script>
 <script>
 (function() {
   try {
@@ -4776,7 +5147,7 @@ header.navheader .mode-selector .community-mode-toggle {
 })()
 </script>
 </head>
-<body class='<%=theme%>' data-platform="<%=platform%>" data-agent="<%=agent%>" data-view="<%=type%>">
+<body class='<%= [theme, "app-page"].filter(Boolean).join(" ") %>' data-platform="<%=platform%>" data-agent="<%=agent%>" data-view="<%=type%>">
 <header class='navheader grabbable'>
 <h1>
 <a class='home' href="/home">
@@ -4796,7 +5167,7 @@ header.navheader .mode-selector .community-mode-toggle {
 <div class='sep'></div>
 <div class='mode-selector'>
   <a class="btn2 <%=type === 'run' ? 'selected' : ''%>" href="<%=run_tab%>"><div><i class="fa-solid fa-circle-play"></i></div><div class='caption'>Run</div></a>
-  <a class="btn2 <%=type === 'browse' ? 'selected' : ''%>" href="<%=dev_tab%>"><div><i class="fa-solid fa-code"></i></div><div class='caption'>Dev</div></a>
+  <a class="btn2 <%=type === 'browse' ? 'selected' : ''%>" href="<%=dev_tab%>"><div><i class="fa-solid fa-terminal"></i></div><div class='caption'>Dev</div></a>
   <a class="btn2 <%=type === 'files' ? 'selected' : ''%>" href="<%=files_tab%>"><div><i class="fa-solid fa-file-lines"></i></div><div class='caption'>Files</div></a>
   <% if (registryEnabled) { %>
   <button type='button' id='community-mode-toggle' class="btn2 community-mode-toggle" data-tippy-content="Community" aria-pressed="false">
@@ -4895,7 +5266,7 @@ header.navheader .mode-selector .community-mode-toggle {
             <% if (config.menu) { %>
               <%- include('./partials/menu', { menu: config.menu, }) %>
             <% } %>
-            <a id='settings-tab' data-mode="refresh" target="env-settings" href="/env/api/<%=name%>" class="btn header-item frame-link" data-index="settings" data-static="retain">
+            <a id='settings-tab' data-mode="refresh" target="env-settings" href="/env/api/<%=name%>?host=app" class="btn header-item frame-link" data-index="settings" data-static="retain">
               <div class='tab'>
                 <i class="fa-solid fa-gear"></i>
                 <div class='display'>Settings</div>
@@ -4906,19 +5277,24 @@ header.navheader .mode-selector .community-mode-toggle {
         <% } %>
         <div class='m s temp-menu' data-type='s'>
           <%tabs.forEach((tab, i) => { %>
-            <a target="s<%=i%>" href="<%=tab%>" class="btn header-item frame-link" data-index="<%=i%>">
+            <% const tabHref = typeof tab === "string" ? tab : ((tab && typeof tab.href === "string") ? tab.href : "") %>
+            <% const tabLabel = typeof tab === "string" ? tab : ((tab && typeof tab.label === "string" && tab.label.trim().length > 0) ? tab.label.trim() : tabHref) %>
+            <% const tabTarget = (tab && typeof tab.target === "string" && tab.target.trim().length > 0) ? tab.target.trim() : `s${i}` %>
+            <% const tabIsShell = (tab && typeof tab.kind === "string" && tab.kind === "shell") || /\/shell\//.test(tabHref) %>
+            <a target="<%=tabTarget%>" href="<%=tabHref%>" class="btn header-item frame-link tab-link-popover-host" data-index="<%=i%>" <%= tabIsShell ? 'data-shell-tab="1"' : '' %>>
               <div class='tab'>
-                <i class="fa-solid fa-link"></i><div class='display'><%=tab%></div><div class='flexible'></div><button class='btn2 del'><i class="fa-solid fa-xmark"></i></button>
+                <i class="fa-solid fa-link"></i><div class='display'><%=tabLabel%></div><div class='flexible'></div><% if (!tabIsShell) { %><button class='btn2 del'><i class="fa-solid fa-xmark"></i></button><% } %>
               </div>
             </a>
           <%})%>
         </div>
+        <div class='active-nested-path hidden' id='active-nested-path'></div>
       </div>
       <div class='menu-actions'>
         <% if (type === 'run') { %>
           <button type='button' id='ask-ai-tab' class="btn header-item" data-static="ask-ai" data-workspace="<%=name%>" data-workspace-cwd="<%=path%>" data-ask-ai-trigger="true" data-tippy-content="Ask AI">
             <div class='tab'>
-              <i class="fa-solid fa-robot"></i>
+              <span class="menu-action-leading-icon ask-ai-brand-icon" aria-hidden="true"></span>
               <div class='display'>Ask AI</div>
               <div class='flexible'></div>
             </div>
@@ -4927,7 +5303,7 @@ header.navheader .mode-selector .community-mode-toggle {
         <% if (registryEnabled) { %>
           <button type='button' id='community-toggle' class="btn header-item" data-tippy-content="community">
             <div class='tab'>
-              <i class="fa-solid fa-globe"></i>
+              <i class="fa-solid fa-globe menu-action-leading-icon"></i>
               <div class='display'>Community</div>
               <div class='flexible'></div>
             </div>
@@ -5062,6 +5438,7 @@ header.navheader .mode-selector .community-mode-toggle {
         <% if (type === 'files') { %>
           <iframe class='selected' src="<%=editor_tab%>" allow="fullscreen *;" allowfullscreen></iframe>
         <% } %>
+        <%- include('./partials/browser_popout_surface') %>
       </main>
       <% if (type === 'run') { %>
       <div class='ask-ai-resizer' id='ask-ai-resizer' role="separator" aria-orientation="vertical" aria-valuemin="240" aria-valuemax="9999" aria-valuenow="560" tabindex="0" aria-label="Resize panel"></div>
@@ -5089,9 +5466,9 @@ header.navheader .mode-selector .community-mode-toggle {
           </div>
           <div class='ask-ai-drawer-body'>
             <div class='ask-ai-drawer-empty'>
-              <div class='ask-ai-drawer-empty-title'>Pick an agent to launch</div>
-              <div class='ask-ai-drawer-picker-list' role="list" aria-label="Ask AI agents"></div>
-              <div class='ask-ai-drawer-picker-status muted'>Use the Ask AI button to load available agents.</div>
+              <div class='ask-ai-drawer-empty-title'>Pick a plugin to launch</div>
+              <div class='ask-ai-drawer-picker-list' role="list" aria-label="Ask AI plugins"></div>
+              <div class='ask-ai-drawer-picker-status muted'>Use the Ask AI button to load available plugins.</div>
             </div>
             <iframe class='ask-ai-frame hidden' title="Panel" allow="fullscreen *;" allowfullscreen></iframe>
           </div>
@@ -5260,6 +5637,7 @@ header.navheader .mode-selector .community-mode-toggle {
   let interacted = false
   let global_selector
   let pendingSelectionRetry = null
+  let initialWorkspaceDiskUsageRequested = false
   const scheduleSelectionRetry = (delay = 100) => {
     if (pendingSelectionRetry !== null) {
       return
@@ -5269,7 +5647,7 @@ header.navheader .mode-selector .community-mode-toggle {
       renderSelection({ force: true })
     }, delay)
   }
-  const pluginLaunchActive = (() => {
+  let pluginLaunchActive = (() => {
     try {
       const params = new URLSearchParams(window.location.search)
       return params.has('plugin')
@@ -5279,6 +5657,11 @@ header.navheader .mode-selector .community-mode-toggle {
   })()
   let ignorePersistedSelection = pluginLaunchActive
   let lastForegroundSignature = null
+  const browserPopoutSurface = window.createBrowserPopoutSurface({
+    onShow: () => {
+      lastForegroundSignature = null
+    },
+  })
   const iframe_onerror = (iframe) => {
     if (iframe && iframe.dataset && iframe.dataset.forceVisible === 'true') {
       return
@@ -5315,7 +5698,106 @@ header.navheader .mode-selector .community-mode-toggle {
       }
     }
   }
-  const create_iframe = (name, href) => {
+  const parseInjectDescriptors = (value) => {
+    if (typeof value !== "string" || !value.trim()) {
+      return []
+    }
+    try {
+      const parsed = JSON.parse(decodeURIComponent(value))
+      return Array.isArray(parsed) ? parsed : []
+    } catch (_) {
+      return []
+    }
+  }
+  let injectTargetPublishScheduled = false
+  const buildBrowserviewInjectTargets = (extraFrames = []) => {
+    return Array.from(document.querySelectorAll("main.browserview iframe")).concat(Array.isArray(extraFrames) ? extraFrames : []).map((frame) => {
+      if (!frame || typeof frame.getAttribute !== "function") {
+        return null
+      }
+      return {
+        name: frame.name || frame.getAttribute("name") || "",
+        src: frame.getAttribute("src") || frame.src || "",
+        inject: parseInjectDescriptors(frame.getAttribute("data-pinokio-inject"))
+      }
+    }).filter(Boolean)
+  }
+  const publishBrowserviewInjectTargets = (extraFrames = [], options = {}) => {
+    const payload = {
+      pageUrl: window.location.href,
+      targets: buildBrowserviewInjectTargets(extraFrames)
+    }
+    const sync = Boolean(options && options.sync)
+    try {
+      if (sync && window.electronAPI && typeof window.electronAPI.sendSync === "function") {
+        return window.electronAPI.sendSync("pinokio:update-inject-targets-sync", payload)
+      }
+      if (window.electronAPI && typeof window.electronAPI.send === "function") {
+        return window.electronAPI.send("pinokio:update-inject-targets", payload)
+      }
+    } catch (_) {
+    }
+    return null
+  }
+  const schedulePublishBrowserviewInjectTargets = () => {
+    if (injectTargetPublishScheduled) {
+      return
+    }
+    injectTargetPublishScheduled = true
+    setTimeout(() => {
+      injectTargetPublishScheduled = false
+      publishBrowserviewInjectTargets()
+    }, 0)
+  }
+  const installBrowserviewInjectTargetObserver = () => {
+    if (typeof MutationObserver !== "function") {
+      return
+    }
+    const root = document.querySelector("main")
+    if (!root) {
+      return
+    }
+    const observer = new MutationObserver((records) => {
+      const relevant = records.some((record) => {
+        if (record.type === "childList") {
+          return true
+        }
+        return record.type === "attributes"
+      })
+      if (relevant) {
+        schedulePublishBrowserviewInjectTargets()
+      }
+    })
+    observer.observe(root, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["src", "name", "data-pinokio-inject", "class"]
+    })
+    schedulePublishBrowserviewInjectTargets()
+  }
+  const readLinkInjectDescriptors = (node) => {
+    if (!node || typeof node.getAttribute !== "function") {
+      return []
+    }
+    const raw = node.getAttribute("data-pinokio-inject")
+    return parseInjectDescriptors(raw)
+  }
+  const writeFrameInjectDescriptors = (frame, descriptors) => {
+    if (!frame || !frame.dataset) {
+      return
+    }
+    const normalized = Array.isArray(descriptors) ? descriptors : []
+    if (normalized.length === 0) {
+      delete frame.dataset.pinokioInject
+      frame.removeAttribute("data-pinokio-inject")
+      return
+    }
+    const serialized = encodeURIComponent(JSON.stringify(normalized))
+    frame.dataset.pinokioInject = serialized
+    frame.setAttribute("data-pinokio-inject", serialized)
+  }
+  const create_iframe = (name, href, injectDescriptors = []) => {
     document.querySelectorAll(".menu-container .selected").forEach((el) => {
       el.classList.remove("selected")
     })
@@ -5327,14 +5809,21 @@ header.navheader .mode-selector .community-mode-toggle {
     frame.src = href
     frame.classList.add("selected")
     iframe_onerror(frame)
+    trackBrowserviewFrame(frame)
+    frame.addEventListener("load", () => {
+      requestInitialWorkspaceDiskUsage()
+    }, { once: true })
     frame.setAttribute(
       "allow", 
       "clipboard-read *; clipboard-write *; accelerometer *; ambient-light-sensor *; autoplay *; battery *; camera *; display-capture *; fullscreen *; gamepad *; geolocation *; gyroscope *; hid *; identity-credentials-get *; microphone *; midi *; otp-credentials *; serial *;"
     )
     frame.setAttribute("allowfullscreen", "")
+    writeFrameInjectDescriptors(frame, injectDescriptors)
+    publishBrowserviewInjectTargets([frame], { sync: true })
     document.querySelector("main").appendChild(frame)
     loaded[name] = true
   }
+  installBrowserviewInjectTargetObserver()
   document.addEventListener("click", (e) => {
     interacted = true
   })
@@ -5377,6 +5866,7 @@ header.navheader .mode-selector .community-mode-toggle {
   const tabMainClass = "tab-main"
   const tabDetailsClass = "tab-details"
   const updatedClass = "tab-updated"
+  const statusEnabled = <%- JSON.stringify(type === 'browse') %>
   const tabStateStore = new Map()
   const TAB_STATE_STORAGE_KEY = "tab-state-store"
   const getWindowStorage = () => {
@@ -5403,18 +5893,16 @@ header.navheader .mode-selector .community-mode-toggle {
     return frameName
   }
   const selectionStorageKey = () => {
-    const base = frameContextKey()
-    if (!base) {
-      return ""
-    }
-    return `${base}:selector`
+    return `${frameContextKey()}:selector`
   }
   const selectionUrlStorageKey = () => {
-    const base = frameContextKey()
-    if (!base) {
-      return ""
+    return `${frameContextKey()}:url`
+  }
+  const shouldPersistFrameLink = (node) => {
+    if (!node || !(node instanceof HTMLElement)) {
+      return false
     }
-    return `${base}:url`
+    return node.dataset.persist !== "false"
   }
   const forceDefaultSelectionStorageKey = () => {
     const base = frameContextKey()
@@ -5693,6 +6181,24 @@ header.navheader .mode-selector .community-mode-toggle {
       tabStateStore.delete(frameName)
     }
   }
+  const deleteTabState = (frameName) => {
+    if (!frameName || typeof frameName !== "string") {
+      return
+    }
+    let changed = false
+    if (tabStateStore.delete(frameName)) {
+      changed = true
+    }
+    const normalizedFrameName = stripSessionParam(frameName)
+    if (normalizedFrameName && normalizedFrameName !== frameName) {
+      if (tabStateStore.delete(normalizedFrameName)) {
+        changed = true
+      }
+    }
+    if (changed) {
+      persistTabStateStore()
+    }
+  }
   const recordTabPreviewState = (frameName, previewText, hasContent, timestamp) => {
     const state = getOrCreateTabState(frameName)
     if (!state) {
@@ -5768,11 +6274,11 @@ header.navheader .mode-selector .community-mode-toggle {
     return ""
   }
   const targetsMatch = (a, b) => {
-    if (!a || !b) {
-      return false
-    }
     if (a === b) {
       return true
+    }
+    if (!a || !b) {
+      return false
     }
     const sessionA = extractSessionId(a)
     const sessionB = extractSessionId(b)
@@ -5781,26 +6287,271 @@ header.navheader .mode-selector .community-mode-toggle {
     }
     return false
   }
+  const findFrameLinkByTarget = (targetValue) => {
+    if (!targetValue) {
+      return null
+    }
+    const escapedTarget = escapeTargetSelector(targetValue)
+    if (!escapedTarget) {
+      return null
+    }
+    return document.querySelector(`.frame-link[target="${escapedTarget}"]`)
+  }
+  const titleCaseSlug = (value) => {
+    if (typeof value !== "string") {
+      return ""
+    }
+    return value
+      .split(/[-_]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ")
+  }
+  const deriveLaunchLabel = (launch = {}) => {
+    const explicitLabel = typeof launch.label === "string" ? launch.label.trim() : ""
+    if (explicitLabel) {
+      return explicitLabel
+    }
+    const href = typeof launch.href === "string" ? launch.href : ""
+    try {
+      const parsed = new URL(href, window.location.origin)
+      if (parsed.pathname.startsWith("/run/plugin/") || parsed.pathname.startsWith("/pinokio/run/plugin/") || (parsed.pathname.startsWith("/run/api/") && /\/pinokio\.js$/i.test(parsed.pathname))) {
+        const parts = parsed.pathname.split("/").filter(Boolean)
+        const pluginSlug = parts.length >= 2 ? parts[parts.length - 2] : ""
+        const pluginLabel = titleCaseSlug(pluginSlug)
+        if (pluginLabel) {
+          return pluginLabel
+        }
+      }
+      const lastSegment = parsed.pathname.split("/").filter(Boolean).pop() || ""
+      const normalized = lastSegment.replace(/\.js$/i, "")
+      const fallbackLabel = titleCaseSlug(normalized)
+      if (fallbackLabel) {
+        return fallbackLabel
+      }
+    } catch (_) {}
+    return "Launch"
+  }
   const getTabLink = (frameName) => {
     if (!frameName) {
       return null
     }
-    const escapedName = escapeTargetSelector(frameName)
-    const selector = `.frame-link[target="${escapedName}"]`
-    const link = document.querySelector(selector)
-    if (link && link.tagName === "A" && link.closest(".dynamic .submenu")) {
+    const findByTarget = (targetValue) => {
+      const escapedName = escapeTargetSelector(targetValue)
+      if (!escapedName) {
+        return null
+      }
+      const matches = Array.from(document.querySelectorAll(`.frame-link[target="${escapedName}"]`)).filter((candidate) => {
+        return candidate && candidate.tagName === "A"
+      })
+      if (matches.length === 0) {
+        return null
+      }
+      const preferShellTab = /\/shell\//.test(targetValue)
+      if (preferShellTab) {
+        return matches.find((candidate) => candidate.closest(".temp-menu")) || matches[0]
+      }
+      return matches.find((candidate) => candidate.closest(".dynamic .submenu"))
+        || matches.find((candidate) => candidate.closest(".temp-menu"))
+        || matches[0]
+    }
+    const link = findByTarget(frameName)
+    if (link) {
       return link
     }
     const normalized = stripSessionParam(frameName)
     if (normalized && normalized !== frameName) {
-      const normalizedSelector = `.frame-link[target="${escapeTargetSelector(normalized)}"]`
-      const fallback = document.querySelector(normalizedSelector)
-      if (fallback && fallback.tagName === "A" && fallback.closest(".dynamic .submenu")) {
-        return fallback
-      }
+      return findByTarget(normalized)
     }
     return null
   }
+  const findPreviewTabLink = (frameName) => {
+    if (!statusEnabled || !frameName || /\/shell\//.test(frameName)) {
+      return null
+    }
+    const findByTarget = (targetValue) => {
+      return Array.from(document.querySelectorAll(".dynamic .submenu .frame-link")).find((candidate) => {
+        const candidateTarget = candidate.getAttribute("target") || ""
+        return targetsMatch(candidateTarget, targetValue)
+      }) || null
+    }
+    const link = findByTarget(frameName)
+    if (link) {
+      return link
+    }
+    const normalized = stripSessionParam(frameName)
+    if (normalized && normalized !== frameName) {
+      return findByTarget(normalized)
+    }
+    return null
+  }
+  const getBrowserviewFrameStoredUrl = (frame) => {
+    if (!frame || typeof frame.getAttribute !== "function") {
+      return ""
+    }
+    return frame.dataset.currentUrl || frame.getAttribute("data-current-url") || frame.getAttribute("src") || frame.src || ""
+  }
+  const readBrowserviewFrameCurrentUrl = (frame) => {
+    if (!frame) {
+      return ""
+    }
+    try {
+      if (frame.contentWindow && frame.contentWindow.location) {
+        const href = frame.contentWindow.location.href
+        if (typeof href === "string" && href) {
+          frame.dataset.currentUrl = href
+          frame.setAttribute("data-current-url", href)
+          return href
+        }
+      }
+    } catch (_) {}
+    const fallback = getBrowserviewFrameStoredUrl(frame)
+    if (fallback && frame.dataset) {
+      frame.dataset.currentUrl = fallback
+      frame.setAttribute("data-current-url", fallback)
+    }
+    return fallback
+  }
+  const trackBrowserviewFrame = (frame) => {
+    if (!frame || !frame.dataset) {
+      return frame || null
+    }
+    if (frame.dataset.browserviewTracked === "1") {
+      readBrowserviewFrameCurrentUrl(frame)
+      return frame
+    }
+    frame.dataset.browserviewTracked = "1"
+    const syncCurrentUrl = () => {
+      readBrowserviewFrameCurrentUrl(frame)
+    }
+    const dismissFloatingMenus = () => {
+      closeFloatingMenus()
+    }
+    frame.addEventListener("load", syncCurrentUrl)
+    frame.addEventListener("focus", dismissFloatingMenus)
+    frame.addEventListener("pointerdown", dismissFloatingMenus)
+    syncCurrentUrl()
+    return frame
+  }
+  const resolveBrowserviewFrameForLink = (link) => {
+    if (!link || !(link instanceof HTMLElement) || browserPopoutSurface.isPopoutTab(link)) {
+      return null
+    }
+    const frames = Array.from(document.querySelectorAll("main.browserview iframe"))
+    if (frames.length === 0) {
+      return null
+    }
+    const linkTarget = link.getAttribute("target") || link.target || ""
+    if (linkTarget) {
+      const targetMatch = frames.find((frame) => {
+        const frameName = frame.name || frame.getAttribute("name") || ""
+        return targetsMatch(frameName, linkTarget)
+      })
+      if (targetMatch) {
+        return trackBrowserviewFrame(targetMatch)
+      }
+    }
+    let href = ""
+    try {
+      href = link.href || ""
+    } catch (_) {
+      href = ""
+    }
+    if (!href) {
+      href = link.getAttribute("href") || ""
+    }
+    if (href) {
+      const directMatch = frames.find((frame) => {
+        const currentSrc = frame.getAttribute("src") || frame.src || ""
+        return currentSrc === href
+      })
+      if (directMatch) {
+        return trackBrowserviewFrame(directMatch)
+      }
+      try {
+        const targetUrl = new URL(href, window.location.origin)
+        const targetPath = targetUrl.pathname || "/"
+        const targetPort = targetUrl.port || (targetUrl.protocol.toLowerCase() === "https:" ? "443" : "80")
+        const pathMatch = frames.find((frame) => {
+          try {
+            const frameUrl = new URL(frame.getAttribute("src") || frame.src, window.location.origin)
+            const framePath = frameUrl.pathname || "/"
+            const framePort = frameUrl.port || (frameUrl.protocol.toLowerCase() === "https:" ? "443" : "80")
+            return framePath === targetPath && framePort === targetPort
+          } catch (_) {
+            return false
+          }
+        })
+        if (pathMatch) {
+          return trackBrowserviewFrame(pathMatch)
+        }
+      } catch (_) {}
+    }
+    return null
+  }
+  const refreshBrowserviewFrame = (frame) => {
+    if (!frame) {
+      return false
+    }
+    trackBrowserviewFrame(frame)
+    try {
+      if (frame.contentWindow && frame.contentWindow.location && typeof frame.contentWindow.location.reload === "function") {
+        frame.contentWindow.location.reload()
+        return true
+      }
+    } catch (_) {}
+    const currentUrl = readBrowserviewFrameCurrentUrl(frame)
+    if (currentUrl) {
+      frame.src = currentUrl
+      return true
+    }
+    const currentSrc = frame.getAttribute("src") || frame.src
+    if (currentSrc) {
+      frame.src = currentSrc
+      return true
+    }
+    return false
+  }
+  const getBrowserviewTabLinkContext = (link) => {
+    if (!link || !(link instanceof HTMLElement)) {
+      return {
+        frame: null,
+        baseUrl: "",
+        currentUrl: "",
+        canRefresh: false,
+        isPopout: false
+      }
+    }
+    let baseUrl = ""
+    try {
+      baseUrl = link.href || ""
+    } catch (_) {
+      baseUrl = link.getAttribute("href") || ""
+    }
+    const isPopout = browserPopoutSurface.isPopoutTab(link)
+    const frame = isPopout ? null : resolveBrowserviewFrameForLink(link)
+    const currentUrl = frame ? readBrowserviewFrameCurrentUrl(frame) : baseUrl
+    return {
+      frame,
+      baseUrl,
+      currentUrl: currentUrl || baseUrl,
+      canRefresh: Boolean(frame),
+      isPopout
+    }
+  }
+  document.querySelectorAll("main.browserview iframe").forEach((frame) => {
+    trackBrowserviewFrame(frame)
+  })
+  window.PinokioBrowserviewTabs = Object.freeze({
+    getContextForLink: getBrowserviewTabLinkContext,
+    resolveFrameForLink: resolveBrowserviewFrameForLink,
+    readFrameCurrentUrl: readBrowserviewFrameCurrentUrl,
+    refreshFrame: refreshBrowserviewFrame,
+    refreshLink: (link) => {
+      return refreshBrowserviewFrame(resolveBrowserviewFrameForLink(link))
+    },
+    trackFrame: trackBrowserviewFrame
+  })
   const isNotificationCapableLink = (link) => {
     // Links that can spin up an iframe or stream output should request notifications
     if (!link || !(link instanceof HTMLElement)) {
@@ -5834,9 +6585,23 @@ header.navheader .mode-selector .community-mode-toggle {
       }
       tab.appendChild(tabMain)
     }
+    let displayEl = tabMain.querySelector(".display")
     Array.from(tabMain.childNodes).forEach((node) => {
       if (node.nodeType === Node.TEXT_NODE) {
-        node.remove()
+        const text = (node.textContent || "").replace(/\s+/g, " ").trim()
+        if (!text) {
+          node.remove()
+          return
+        }
+        if (displayEl) {
+          displayEl.textContent = `${displayEl.textContent} ${text}`.trim()
+          node.remove()
+          return
+        }
+        displayEl = document.createElement("div")
+        displayEl.className = "display"
+        displayEl.textContent = text
+        tabMain.replaceChild(displayEl, node)
       }
     })
     let details = tabMain.querySelector(`.${tabDetailsClass}`)
@@ -5932,7 +6697,10 @@ header.navheader .mode-selector .community-mode-toggle {
     return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`
   }
   const updateTabPreview = (frameName, previewText, hasContent, timestamp) => {
-    const link = getTabLink(frameName)
+    if (!statusEnabled || !frameName || /\/shell\//.test(frameName)) {
+      return
+    }
+    const link = findPreviewTabLink(frameName)
     if (!link) {
       recordTabPreviewState(frameName, previewText, hasContent, timestamp)
       return
@@ -5961,12 +6729,13 @@ header.navheader .mode-selector .community-mode-toggle {
       updatedEl.classList.remove('is-live')
     }
     recordTabPreviewState(frameName, previewText, hasContent, timestamp)
+    syncActiveNestedPath()
   }
   const updateTabTimestamp = (frameName, timestamp) => {
-    if (typeof timestamp !== "number") {
+    if (!statusEnabled || !frameName || /\/shell\//.test(frameName) || typeof timestamp !== "number") {
       return
     }
-    const link = getTabLink(frameName)
+    const link = findPreviewTabLink(frameName)
     if (!link) {
       recordTabTimestampState(frameName, timestamp)
       return
@@ -5989,6 +6758,7 @@ header.navheader .mode-selector .community-mode-toggle {
     }
     ensureTimestampInterval()
     recordTabTimestampState(frameName, timestamp)
+    syncActiveNestedPath()
   }
   const restoreTabState = (frameName) => {
     const state = tabStateStore.get(frameName)
@@ -6004,6 +6774,9 @@ header.navheader .mode-selector .community-mode-toggle {
     }
   }
   const restoreAllTabStates = () => {
+    if (!statusEnabled) {
+      return
+    }
     tabStateStore.forEach((_, frameName) => {
       restoreTabState(frameName)
     })
@@ -6127,6 +6900,7 @@ const rerenderMenuSection = (container, html) => {
         targetContainer.appendChild(node)
       })
     }
+    syncActiveNestedPath()
   }
   let timestampIntervalId = null
   const ensureTimestampInterval = () => {
@@ -6210,58 +6984,6 @@ const rerenderMenuSection = (container, html) => {
 
     return true;
   }
-  const toManagedDevHref = (rawHref, currentPath) => {
-    if (typeof rawHref !== "string" || rawHref.length === 0) {
-      return rawHref
-    }
-    if (!/\/p\/[^/]+\/dev(?:$|\/)/.test(currentPath || "")) {
-      return rawHref
-    }
-    let parsed
-    try {
-      parsed = new URL(rawHref, window.location.origin)
-    } catch (_) {
-      return rawHref
-    }
-    const isCliPluginRoute = /^\/run\/plugin\/code\/(codex|claude|gemini)\/pinokio\.js$/i.test(parsed.pathname || "")
-    if (!isCliPluginRoute) {
-      return rawHref
-    }
-    if (parsed.searchParams.has("prompt") || parsed.searchParams.has("terminal_id")) {
-      return rawHref
-    }
-    if (!parsed.searchParams.has("cwd")) {
-      return rawHref
-    }
-    parsed.searchParams.set("managed_dev", "1")
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`
-  }
-  const maybeMarkManagedDevTarget = (target) => {
-    if (!target || target.tagName !== "A") {
-      return
-    }
-    const currentPath = (() => {
-      try {
-        return window.location?.pathname || ""
-      } catch (_) {
-        return ""
-      }
-    })()
-    const hrefAttr = target.getAttribute("href")
-    const sourceHref = typeof hrefAttr === "string" ? hrefAttr : (target.href || "")
-    const managedHref = toManagedDevHref(sourceHref, currentPath)
-    if (!managedHref || managedHref === sourceHref) {
-      return
-    }
-    target.setAttribute("href", managedHref)
-    if (target.hasAttribute("data-target-full")) {
-      target.setAttribute("data-target-full", managedHref)
-    }
-    const currentTarget = target.getAttribute("target")
-    if (typeof currentTarget === "string" && currentTarget.startsWith("@")) {
-      target.setAttribute("target", `@${managedHref}`)
-    }
-  }
   const renderCursor = () => {
     document.querySelectorAll(".selectable").forEach((el) => {
       el.classList.remove("cursor")
@@ -6270,7 +6992,10 @@ const rerenderMenuSection = (container, html) => {
     target.classList.add("cursor")
   }
   const nav = (type) => {
-    let targetFrame = document.querySelector("iframe:not(.hidden)")
+    let targetFrame = document.querySelector("main.browserview iframe:not(.hidden)")
+    if (!targetFrame || !targetFrame.contentWindow) {
+      return
+    }
     if (type === "back") {
   //    targetFrame.contentWindow.history.back()
       targetFrame.contentWindow.postMessage({
@@ -6345,7 +7070,7 @@ const rerenderMenuSection = (container, html) => {
     const originalHasPersistedSelection = Boolean(persistedSelectionPayload)
     const triggeredByUser = Boolean(eventParam || explicitTarget)
     const followCurrentDefault = forceDefaultSelection && !triggeredByUser
-    const skipPersistedSelection = ignorePersistedSelection || followCurrentDefault
+    const skipPersistedSelection = followCurrentDefault || (ignorePersistedSelection && Boolean(document.querySelector('[data-default]')))
     let hasPersistedSelection = skipPersistedSelection ? false : originalHasPersistedSelection
     if (skipPersistedSelection) {
       persistedSelectionRaw = null
@@ -6407,6 +7132,10 @@ const rerenderMenuSection = (container, html) => {
     }
 
     const devTab = document.querySelector('#devtab.frame-link')
+    if (!target && preselected && preselected !== devTab) {
+      target = preselected
+    }
+
     if (!triggeredByUser && !resolvedByGlobalSelector && !target && devRouteActive && devTab) {
       const defaultCandidate = getDefaultSelection()
       if (pluginLaunchActive && defaultCandidate) {
@@ -6456,24 +7185,23 @@ const rerenderMenuSection = (container, html) => {
     }
 
     if (!target) {
+      activeNestedFocusMenu = null
+      syncActiveNestedPath()
+      browserPopoutSurface.hide()
       document.querySelector(".container").classList.remove("active")
       document.querySelector("aside").classList.add("active")
       return
     }
 
-    document.querySelector(".container").classList.add("active")
-    document.querySelector("aside").classList.remove("active")
+	    document.querySelector(".container").classList.add("active")
+	    document.querySelector("aside").classList.remove("active")
 
 
-    // Instantiate a frame with the selected target's href
-    let url = target.href
-
-    if (!url) {
-      return
-    }
-//    document.querySelector("#open-browser").href = url
-//    document.querySelector("#clone-tab").setAttribute("data-href", url)
-
+		    // Instantiate a frame with the selected target's href
+	      const targetInjectDescriptors = readLinkInjectDescriptors(target)
+		    if (!target.href) {
+		      return
+		    }
     //document.querySelector("#location").value = url
 
 //    document.querySelector("#open-location").setAttribute('href', target.href)
@@ -6491,22 +7219,30 @@ const rerenderMenuSection = (container, html) => {
       el.classList.remove("selected")
     })
     target.classList.add("selected")
+    activeNestedFocusMenu = null
+    syncActiveNestedPath({ selectedLink: target })
     if (skipPersistedSelection && target.hasAttribute('data-default')) {
       ignorePersistedSelection = false
     }
     if (forceDefaultSelection && triggeredByUser) {
       forceDefaultSelection = false
     }
-    if (!followCurrentDefault) {
+    if (!followCurrentDefault && shouldPersistFrameLink(target)) {
       persistFrameLinkSelection(target)
+    }
+
+    if (eventParam && target.tagName === "A" && target.target !== "_blank") {
+      eventParam.preventDefault()
+      eventParam.stopPropagation()
     }
 
     // save target.href
     <% if (type !== "run") { %>
       let _url = new URL(target.href)
       const urlKey = selectionUrlStorageKey()
-      if (urlKey) {
-        windowStorage.setItem(urlKey, _url.pathname + _url.search + _url.hash)
+      if (urlKey && shouldPersistFrameLink(target)) {
+        const selectionValue = browserPopoutSurface.isPopoutTab(target) ? target.href : (_url.pathname + _url.search + _url.hash)
+        windowStorage.setItem(urlKey, selectionValue)
       }
     <% } %>
 
@@ -6514,6 +7250,16 @@ const rerenderMenuSection = (container, html) => {
     document.querySelectorAll("main.browserview iframe").forEach((el) => {
       el.classList.add("hidden")
     })
+    browserPopoutSurface.hide()
+    if (browserPopoutSurface.isPopoutTab(target)) {
+      if (eventParam) {
+        eventParam.preventDefault()
+        eventParam.stopPropagation()
+      }
+      requestInitialWorkspaceDiskUsage()
+      browserPopoutSurface.show(target)
+      return
+    }
 
 
 
@@ -6579,9 +7325,11 @@ const rerenderMenuSection = (container, html) => {
 
         */
 
-    if (targetFrame) {
-      targetFrame.classList.remove("hidden")
-      let mode = target.getAttribute("data-mode")
+	    if (targetFrame) {
+		      writeFrameInjectDescriptors(targetFrame, targetInjectDescriptors)
+	      publishBrowserviewInjectTargets([], { sync: true })
+	      targetFrame.classList.remove("hidden")
+	      let mode = target.getAttribute("data-mode")
       if (mode === "refresh") {
         if (targetFrame.src !== target.href) {
           targetFrame.src = target.href
@@ -6627,20 +7375,26 @@ const rerenderMenuSection = (container, html) => {
               lastForegroundSignature = signature
             }
           }
-        } else {
-          let frame = document.createElement("iframe")
-          frame.name = target.target
-          frame.src = target.href
-          iframe_onerror(frame)
-          frame.setAttribute(
-            "allow", 
-            "clipboard-read *; clipboard-write *; accelerometer *; ambient-light-sensor *; autoplay *; battery *; camera *; display-capture *; fullscreen *; gamepad *; geolocation *; gyroscope *; hid *; identity-credentials-get *; microphone *; midi *; otp-credentials *; serial *;"
-          )
-          frame.setAttribute("allowfullscreen", "")
-          document.querySelector("main").appendChild(frame)
-          loaded[target.target] = true
-          lastForegroundSignature = null
-        }
+	        } else {
+	          let frame = document.createElement("iframe")
+	          frame.name = target.target
+	          frame.src = target.href
+	          iframe_onerror(frame)
+	          trackBrowserviewFrame(frame)
+	          frame.addEventListener("load", () => {
+	            requestInitialWorkspaceDiskUsage()
+	          }, { once: true })
+	          frame.setAttribute(
+	            "allow",
+	            "clipboard-read *; clipboard-write *; accelerometer *; ambient-light-sensor *; autoplay *; battery *; camera *; display-capture *; fullscreen *; gamepad *; geolocation *; gyroscope *; hid *; identity-credentials-get *; microphone *; midi *; otp-credentials *; serial *;"
+	          )
+	          frame.setAttribute("allowfullscreen", "")
+	          writeFrameInjectDescriptors(frame, targetInjectDescriptors)
+	          publishBrowserviewInjectTargets([frame], { sync: true })
+	          document.querySelector("main").appendChild(frame)
+	          loaded[target.target] = true
+	          lastForegroundSignature = null
+	        }
 
   //      if (targetFrame) {
   //        targetFrame.classList.remove("hidden")
@@ -6720,29 +7474,6 @@ const rerenderMenuSection = (container, html) => {
   //        loaded[target.target] = true
   //      }
   }
-
-
-  // Need to strip the plugin= query param when redirected from "ask ai", otherwise it will keep selecting the specified plugin even after closing
-  let pluginQueryStripped = false
-  const stripPluginQueryOnce = () => {
-    if (pluginQueryStripped) return
-    const url = new URL(window.location.href)
-    if (!/\/dev(?:$|\/)/.test(url.pathname)) return
-    if (!url.searchParams.has("plugin")) return
-    url.searchParams.delete("plugin")
-    const qs = url.searchParams.toString()
-    const newUrl = `${url.origin}${url.pathname}${qs ? "?" + qs : ""}${url.hash}`
-    if (window.location.href !== newUrl) {
-      history.replaceState({}, "", newUrl)
-    }
-    const dynBase = "<%-dynamic%>".split("?")[0]
-    const updatedDynamic = qs ? `${dynBase}?${qs}` : dynBase
-    window.__pinokioDynamicUrl = updatedDynamic
-    pluginQueryStripped = true
-  }
-  renderSelection().then(() => {
-    stripPluginQueryOnce()
-  })
   //renderCursor()
   //Reporter()
   <% if (agent === "electron") { %>
@@ -6758,7 +7489,26 @@ const rerenderMenuSection = (container, html) => {
   const syncTabs = async () => {
     let tabs = []
     document.querySelectorAll(".temp-menu .frame-link").forEach((el) => {
-      tabs.push(el.href)
+      if (el.dataset.persist === "false") {
+        return
+      }
+      const rawHref = el.getAttribute("href") || ""
+      if (!rawHref) {
+        return
+      }
+      const display = el.querySelector(".display")?.textContent?.trim() || rawHref
+      const rawTarget = el.getAttribute("target") || ""
+      const entry = {
+        href: rawHref,
+        label: display,
+      }
+      if (rawHref.includes("/shell/")) {
+        entry.kind = "shell"
+      }
+      if (rawTarget.startsWith("@")) {
+        entry.target = rawTarget
+      }
+      tabs.push(entry)
     })
 
 
@@ -6770,39 +7520,63 @@ const rerenderMenuSection = (container, html) => {
       },
       body: JSON.stringify({
         name: "<%=name%>",
+        view: "<%=type%>",
         tabs
       })
     })
   }
   const addTab = async (url, options = {}) => {
     const label = typeof options.label === 'string' && options.label.trim().length > 0 ? options.label.trim() : null
+    const providedTarget = typeof options.target === 'string' && options.target.trim().length > 0 ? options.target.trim() : null
+    const shouldPersist = options.persist !== false
+    const isShellTab = (() => {
+      try {
+        return new URL(url, window.location.origin).pathname.startsWith("/shell/")
+      } catch (_) {
+        return typeof url === "string" && url.includes("/shell/")
+      }
+    })()
     let item = document.createElement("a")
     //let id = "ts" + Date.now()
     let index = document.querySelectorAll("aside .s .frame-link").length
 
-    let id = "s" + index
+    let id = providedTarget || ("s" + index)
   //  let id = url
     item.target = id
     item.href = url
     item.setAttribute("data-index", index)
     item.className = "btn header-item frame-link"
+    if (isShellTab) {
+      item.dataset.shellTab = "1"
+    }
+    if (!shouldPersist) {
+      item.dataset.persist = "false"
+    }
     const displayText = label || url
-    item.innerHTML = `<div class='tab'><i class="fa-solid fa-link"></i><div class='display'>${escapeHtml(displayText)}</div><div class='flexible'></div><button class='btn2 del'><i class="fa-solid fa-xmark"></i></button></div>`
+    item.innerHTML = isShellTab
+      ? `<div class='tab'><i class="fa-solid fa-link"></i><div class='display'>${escapeHtml(displayText)}</div><div class='flexible'></div></div>`
+      : `<div class='tab'><i class="fa-solid fa-link"></i><div class='display'>${escapeHtml(displayText)}</div><div class='flexible'></div><button class='btn2 del'><i class="fa-solid fa-xmark"></i></button></div>`
 
     document.querySelector(".temp-menu").appendChild(item)
 
-    let frame = document.createElement("iframe")
-    frame.name = id
-    frame.src = item.href
-    iframe_onerror(frame)
-    frame.setAttribute(
-      "allow", 
-      "clipboard-read *; clipboard-write *; accelerometer *; ambient-light-sensor *; autoplay *; battery *; camera *; display-capture *; fullscreen *; gamepad *; geolocation *; gyroscope *; hid *; identity-credentials-get *; microphone *; midi *; otp-credentials *; serial *;"
-    )
+	    let frame = document.createElement("iframe")
+	    frame.name = id
+	    frame.src = item.href
+	    iframe_onerror(frame)
+	    trackBrowserviewFrame(frame)
+	    frame.addEventListener("load", () => {
+	      requestInitialWorkspaceDiskUsage()
+	    }, { once: true })
+	    frame.setAttribute(
+	      "allow",
+	      "clipboard-read *; clipboard-write *; accelerometer *; ambient-light-sensor *; autoplay *; battery *; camera *; display-capture *; fullscreen *; gamepad *; geolocation *; gyroscope *; hid *; identity-credentials-get *; microphone *; midi *; otp-credentials *; serial *;"
+	    )
     frame.setAttribute("allowfullscreen", "")
     document.querySelector("main").appendChild(frame)
 
-    await syncTabs()
+    if (shouldPersist) {
+      await syncTabs()
+    }
 
 
     return {
@@ -6810,6 +7584,164 @@ const rerenderMenuSection = (container, html) => {
       frame
     }
 
+  }
+  const handleLaunchRequest = async (launch = {}, options = {}) => {
+    const rawName = typeof launch.name === "string" ? launch.name.trim() : ""
+    const rawHref = typeof launch.href === "string" ? launch.href.trim() : ""
+    if (!rawName || !rawHref) {
+      return null
+    }
+    let link = findFrameLinkByTarget(rawName)
+    if (!link) {
+      const created = await addTab(rawHref, {
+        label: deriveLaunchLabel(launch),
+        target: rawName,
+        persist: options.persist !== false,
+      })
+      link = created && created.tab ? created.tab : null
+    } else if (link.getAttribute("href") !== rawHref) {
+      link.setAttribute("href", rawHref)
+    }
+    if (link) {
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => {
+          link.click()
+          resolve()
+        })
+      })
+    }
+    return link
+  }
+  const appWorkspacePath = <%- JSON.stringify(path) %>
+  const createLaunchSession = () => {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID()
+    }
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  }
+  const stripSearchParams = (keys) => {
+    if (!Array.isArray(keys) || keys.length === 0) {
+      return false
+    }
+    const url = new URL(window.location.href)
+    let changed = false
+    keys.forEach((key) => {
+      if (url.searchParams.has(key)) {
+        url.searchParams.delete(key)
+        changed = true
+      }
+    })
+    if (!changed) {
+      return false
+    }
+    const qs = url.searchParams.toString()
+    const newUrl = `${url.origin}${url.pathname}${qs ? "?" + qs : ""}${url.hash}`
+    if (window.location.href !== newUrl) {
+      history.replaceState({}, "", newUrl)
+    }
+    const dynBase = "<%-dynamic%>".split("?")[0]
+    window.__pinokioDynamicUrl = qs ? `${dynBase}?${qs}` : dynBase
+    return true
+  }
+  const maybeShowProtectionInstallToast = () => {
+    const params = new URLSearchParams(window.location.search || "")
+    if (params.get("install_protection") !== "1") {
+      return
+    }
+    const protectionEnabled = <% if (typeof protection_enabled !== 'undefined') { %><%- JSON.stringify(protection_enabled === true) %><% } else { %>false<% } %>
+    n.Noty({
+      timeout: false,
+      progressBar: false,
+      closeWith: ["click"],
+      silent: true,
+      callbacks: {
+        onClick: () => {
+          stripSearchParams(["install_protection"])
+        }
+      },
+      text: protectionEnabled
+        ? "Protection beta is on for this app. You can change it later from the Run tab."
+        : "Protection beta is off for this app. You can change it later from the Run tab."
+    })
+  }
+  maybeShowProtectionInstallToast()
+  const buildPluginLaunchFromQuery = () => {
+    try {
+      const pageUrl = new URL(window.location.href)
+      const pluginPath = pageUrl.searchParams.get("plugin")
+      if (!pluginPath || (!pluginPath.startsWith("/plugin/") && !pluginPath.startsWith("/api/"))) {
+        return null
+      }
+      const launchUrl = new URL(`/run${pluginPath}`, window.location.origin)
+      if (appWorkspacePath && !launchUrl.searchParams.has("cwd")) {
+        launchUrl.searchParams.set("cwd", appWorkspacePath)
+      }
+      const consumedKeys = ["plugin"]
+      const pluginLabel = pageUrl.searchParams.get("plugin_label")
+      if (pluginLabel) {
+        consumedKeys.push("plugin_label")
+      }
+      pageUrl.searchParams.forEach((value, key) => {
+        if (key === "plugin" || key === "plugin_label") {
+          return
+        }
+        launchUrl.searchParams.set(key, value)
+        consumedKeys.push(key)
+      })
+      launchUrl.searchParams.set("session", createLaunchSession())
+      const relativeHref = `${launchUrl.pathname}${launchUrl.search}${launchUrl.hash}`
+      return {
+        launch: {
+          name: `@${relativeHref}`,
+          href: relativeHref,
+          label: pluginLabel || deriveLaunchLabel({ href: relativeHref })
+        },
+        consumedKeys: Array.from(new Set(consumedKeys))
+      }
+    } catch (_) {
+      return null
+    }
+  }
+  let queryPluginLaunchHandled = false
+  let resolvedPluginQueryStripped = false
+  const maybeLaunchPluginFromQuery = async () => {
+    if (queryPluginLaunchHandled) {
+      return false
+    }
+    const launchRequest = buildPluginLaunchFromQuery()
+    if (!launchRequest) {
+      return false
+    }
+    queryPluginLaunchHandled = true
+    const launched = await handleLaunchRequest(launchRequest.launch, { persist: false })
+    if (launched) {
+      pluginLaunchActive = false
+      ignorePersistedSelection = false
+      stripSearchParams(launchRequest.consumedKeys)
+      return true
+    }
+    queryPluginLaunchHandled = false
+    return false
+  }
+  const stripResolvedPluginQueryOnce = () => {
+    if (resolvedPluginQueryStripped) {
+      return
+    }
+    const url = new URL(window.location.href)
+    if (!/\/dev(?:$|\/)/.test(url.pathname)) {
+      return
+    }
+    if (!url.searchParams.has("plugin")) {
+      return
+    }
+    const keys = ["plugin"]
+    if (url.searchParams.has("plugin_label")) {
+      keys.push("plugin_label")
+    }
+    if (stripSearchParams(keys)) {
+      pluginLaunchActive = false
+      resolvedPluginQueryStripped = true
+    }
   }
 
 
@@ -7123,6 +8055,164 @@ const rerenderMenuSection = (container, html) => {
 
   const getSubmenu = (menu) => getDirectChild(menu, ".submenu")
   const getToggle = (menu) => getDirectChild(menu, ".reveal")
+  const activeNestedPathRoot = document.getElementById("active-nested-path")
+  const activeNestedProxyMap = new WeakMap()
+  let activeNestedFocusMenu = null
+
+  const getNestedMenuChain = (node) => {
+    if (!node) {
+      return []
+    }
+    let current = node
+    if (!current.classList || !current.classList.contains("nested-menu")) {
+      current = current.closest(".nested-menu")
+    }
+    const chain = []
+    while (current) {
+      chain.unshift(current)
+      current = current.parentElement ? current.parentElement.closest(".nested-menu") : null
+    }
+    return chain
+  }
+
+  const sanitizeActiveNestedProxy = (proxy) => {
+    if (!proxy) {
+      return null
+    }
+    proxy.removeAttribute("id")
+    proxy.classList.remove("frame-link", "selected", "tab-link-popover-host")
+    proxy.classList.add("active-nested-proxy")
+    proxy.setAttribute("data-active-nested-proxy", "true")
+    proxy.querySelectorAll(".tab-link-popover-trigger").forEach((node) => {
+      node.remove()
+    })
+    return proxy
+  }
+
+  const buildActiveNestedProxy = (child, isCurrent) => {
+    if (!child) {
+      return null
+    }
+    let proxy
+    if (child.classList && child.classList.contains("nested-menu")) {
+      const toggle = getToggle(child)
+      if (!toggle) {
+        return null
+      }
+      proxy = toggle.cloneNode(true)
+    } else {
+      proxy = child.cloneNode(true)
+    }
+    sanitizeActiveNestedProxy(proxy)
+    if (child.classList && child.classList.contains("nested-menu")) {
+      const loader = proxy.querySelector(".loader")
+      if (loader) {
+        loader.innerHTML = `<i class="fa-solid ${isCurrent ? "fa-angle-down" : "fa-angle-right"}"></i>`
+      }
+    }
+    proxy.classList.toggle("is-current", Boolean(isCurrent))
+    activeNestedProxyMap.set(proxy, child)
+    return proxy
+  }
+
+  const syncActiveNestedPath = ({ selectedLink = null } = {}) => {
+    if (!activeNestedPathRoot) {
+      return
+    }
+    if (activeNestedFocusMenu && !activeNestedFocusMenu.isConnected) {
+      activeNestedFocusMenu = null
+    }
+    const currentSelectedLink = (selectedLink && selectedLink.isConnected)
+      ? selectedLink
+      : document.querySelector("aside .frame-link.selected")
+    const chain = activeNestedFocusMenu
+      ? getNestedMenuChain(activeNestedFocusMenu)
+      : getNestedMenuChain(currentSelectedLink)
+
+    activeNestedPathRoot.replaceChildren()
+
+    if (!chain.length) {
+      activeNestedPathRoot.classList.add("hidden")
+      if (window.PinokioMenuScrollHints && typeof window.PinokioMenuScrollHints.update === "function") {
+        window.PinokioMenuScrollHints.update()
+      }
+      return
+    }
+
+    chain.forEach((menu, index) => {
+      const submenu = getSubmenu(menu)
+      if (!submenu) {
+        return
+      }
+      const row = document.createElement("div")
+      row.className = "m active-nested-row"
+      row.dataset.activeNestedLevel = String(index)
+      const nextMenu = chain[index + 1] || null
+
+      Array.from(submenu.children).forEach((child) => {
+        let isCurrent = false
+        if (child.classList && child.classList.contains("nested-menu")) {
+          isCurrent = child === nextMenu || (!nextMenu && currentSelectedLink ? child.contains(currentSelectedLink) : false)
+        } else {
+          isCurrent = child === currentSelectedLink
+        }
+        const proxy = buildActiveNestedProxy(child, isCurrent)
+        if (proxy) {
+          row.appendChild(proxy)
+        }
+      })
+
+      if (row.childElementCount > 0) {
+        activeNestedPathRoot.appendChild(row)
+      }
+    })
+
+    if (!activeNestedPathRoot.childElementCount) {
+      activeNestedPathRoot.classList.add("hidden")
+      if (window.PinokioMenuScrollHints && typeof window.PinokioMenuScrollHints.update === "function") {
+        window.PinokioMenuScrollHints.update()
+      }
+      return
+    }
+
+    activeNestedPathRoot.classList.remove("hidden")
+    const currentProxy = activeNestedPathRoot.querySelector(".active-nested-proxy.is-current")
+    if (currentProxy && typeof currentProxy.scrollIntoView === "function") {
+      currentProxy.scrollIntoView({
+        block: "nearest",
+        inline: "nearest"
+      })
+    }
+    if (window.PinokioMenuScrollHints && typeof window.PinokioMenuScrollHints.update === "function") {
+      window.PinokioMenuScrollHints.update()
+    }
+  }
+
+  if (activeNestedPathRoot) {
+    activeNestedPathRoot.addEventListener("click", (event) => {
+      const proxy = event.target.closest("[data-active-nested-proxy='true']")
+      if (!proxy || !activeNestedPathRoot.contains(proxy)) {
+        return
+      }
+      const source = activeNestedProxyMap.get(proxy)
+      if (!source || !source.isConnected) {
+        return
+      }
+      event.preventDefault()
+      event.stopPropagation()
+      if (source.classList && source.classList.contains("nested-menu")) {
+        activeNestedFocusMenu = source
+        syncActiveNestedPath()
+        return
+      }
+      activeNestedFocusMenu = null
+      if (typeof source.click === "function") {
+        source.click()
+      }
+    })
+  }
+
+  renderSelection()
 
   const resetSubmenuPosition = (submenu) => {
     if (!submenu) {
@@ -7224,6 +8314,12 @@ const rerenderMenuSection = (container, html) => {
       }
       closeNestedMenu(menu)
     })
+  }
+
+  const closeFloatingMenus = () => {
+    closeStatusDropdowns()
+    closeAllNestedMenus()
+    hideTabLinkPopover({ immediate: true })
   }
 
   const openNestedMenu = (menu, toggle) => {
@@ -7479,8 +8575,6 @@ const rerenderMenuSection = (container, html) => {
 
 
     if (target) {
-      maybeMarkManagedDevTarget(target)
-
       // if data-confirm exists, ask for confirmation
       // if not, then just go forward
       let confirmText = target.getAttribute("data-confirm")
@@ -7647,6 +8741,7 @@ const rerenderMenuSection = (container, html) => {
     if (appcanvas && sidebarResizer && sidebarContainer) {
       const SIDEBAR_MIN_WIDTH = 140
       const SIDEBAR_MAX_WIDTH = 560
+      const sidebarMobileQuery = window.matchMedia ? window.matchMedia("(max-width: 768px)") : null
       const workspaceName = "<%= typeof name === 'string' ? name : '' %>"
       const sidebarWidthStorageKey = workspaceName
         ? `pinokio-app-sidebar-width:${workspaceName}`
@@ -7709,6 +8804,9 @@ const rerenderMenuSection = (container, html) => {
 
       const finishResizing = () => {
         if (!isResizing) {
+          if (document.activeElement === sidebarResizer) {
+            sidebarResizer.blur()
+          }
           return
         }
         isResizing = false
@@ -7723,6 +8821,9 @@ const rerenderMenuSection = (container, html) => {
         window.removeEventListener("pointerup", handlePointerUp)
         if (sidebarWidth != null) {
           persistSidebarWidth(sidebarWidth)
+        }
+        if (document.activeElement === sidebarResizer) {
+          sidebarResizer.blur()
         }
       }
 
@@ -7758,6 +8859,10 @@ const rerenderMenuSection = (container, html) => {
       }
 
       sidebarResizer.addEventListener("pointerdown", (event) => {
+        if (sidebarMobileQuery && sidebarMobileQuery.matches) {
+          finishResizing()
+          return
+        }
         if (!appcanvas.classList.contains("vertical")) {
           return
         }
@@ -7778,6 +8883,17 @@ const rerenderMenuSection = (container, html) => {
         bindResizeListeners()
       })
 
+      const handleSidebarViewportChange = () => {
+        if (sidebarMobileQuery && sidebarMobileQuery.matches) {
+          finishResizing()
+        }
+      }
+      if (sidebarMobileQuery && typeof sidebarMobileQuery.addEventListener === "function") {
+        sidebarMobileQuery.addEventListener("change", handleSidebarViewportChange)
+      } else if (sidebarMobileQuery && typeof sidebarMobileQuery.addListener === "function") {
+        sidebarMobileQuery.addListener(handleSidebarViewportChange)
+      }
+
       initSidebarWidth()
     }
   }
@@ -7794,9 +8910,17 @@ const rerenderMenuSection = (container, html) => {
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      closeStatusDropdowns()
-      closeAllNestedMenus()
+      closeFloatingMenus()
     }
+  })
+
+  window.addEventListener("blur", () => {
+    window.setTimeout(() => {
+      const activeElement = document.activeElement
+      if (activeElement && activeElement.tagName === "IFRAME") {
+        closeFloatingMenus()
+      }
+    }, 0)
   })
 
   window.addEventListener("resize", () => {
@@ -7847,10 +8971,16 @@ const rerenderMenuSection = (container, html) => {
       })
     }
   }
+  const requestInitialWorkspaceDiskUsage = () => {
+    if (initialWorkspaceDiskUsageRequested) {
+      return
+    }
+    initialWorkspaceDiskUsageRequested = true
+    refresh_du()
+    refresh_du("logs")
+  }
 
-  let dynamic_loaded = false
-
-  const try_dynamic = async () => {
+  const try_dynamic = async (options = {}) => {
     let rendered
     let status
     const dynamicUrl = window.__pinokioDynamicUrl || "<%-dynamic%>"
@@ -7878,24 +9008,22 @@ const rerenderMenuSection = (container, html) => {
       let default_selection = document.querySelector(".dynamic .submenu [data-default]")
       if (default_selection) {
         default_selection.click()
+        stripResolvedPluginQueryOnce()
+      } else if (await maybeLaunchPluginFromQuery()) {
+        return
       }
       rendered = true
     } else {
       rendered = false
+      if (await maybeLaunchPluginFromQuery()) {
+        return
+      }
     }
     if (rendered) {
-//      if (dynamic_loaded) {
-//        // already loaded, don't touch the UI
-//      } else {
-//        // first time being loaded
-//        dynamic_loaded = true
-//        if (document.querySelector(".dynamic .reveal")) {
-//          console.log("click")
-//
-////          document.querySelector(".dynamic .reveal").click()
-//        }
-//      }
     } else {
+      if (options.retryOnEmpty === false) {
+        return
+      }
       setTimeout(() => {
         try_dynamic()
       }, 1000)
@@ -7949,11 +9077,12 @@ const rerenderMenuSection = (container, html) => {
       renderSelection()
     }
   }
-  let init = document.querySelector("[data-init]")
-  if (init) {
-    init.click()
-  }
-  window.addEventListener('message', (event) => {
+  <% if (type === 'browse') { %>
+    setTimeout(() => {
+      try_dynamic()
+    }, 0)
+  <% } %>
+  window.addEventListener('message', async (event) => {
     // only process the event it's coming from pinokio
     let origin = event.origin
     if (origin) {
@@ -7984,13 +9113,28 @@ const rerenderMenuSection = (container, html) => {
             } else {
               global_selector = null
             }
-          const frameExists = Array.from(document.querySelectorAll("main.browserview iframe")).some((frame) => {
-            return frame.name === rawName
-          })
-            if (!frameExists) {
-              create_iframe(rawName, event.data.launch.href)
+            let isShellLaunch = false
+            try {
+              isShellLaunch = new URL(event.data.launch.href, window.location.origin).pathname.startsWith("/shell/")
+            } catch (_) {
+              isShellLaunch = typeof event.data.launch.href === "string" && event.data.launch.href.includes("/shell/")
             }
-            refresh()
+            if (isShellLaunch) {
+              const launched = await handleLaunchRequest(event.data.launch)
+              if (launched) {
+                global_selector = null
+              } else {
+                refresh()
+              }
+            } else {
+              const frameExists = Array.from(document.querySelectorAll("main.browserview iframe")).some((frame) => {
+                return frame.name === rawName
+              })
+              if (!frameExists) {
+                create_iframe(rawName, event.data.launch.href)
+              }
+              refresh()
+            }
           } else if (event.data.type === "shell-session-id") {
             const frameName = resolveFrameName(event.data.frame, event.source)
             if (frameName && event.data.shellId) {
@@ -8007,10 +9151,32 @@ const rerenderMenuSection = (container, html) => {
             updateTabPreview(frameName, event.data.line || "", hasContent, Date.now())
             return
           } else if (event.data.type) {
+            const frameName = resolveFrameName(event.data.frame, event.source)
+            const shellLink = frameName ? (() => {
+              const directLink = getTabLink(frameName)
+              if (directLink) {
+                const href = directLink.getAttribute("href") || ""
+                if (href.includes("/shell/")) {
+                  return directLink
+                }
+              }
+              return Array.from(document.querySelectorAll('.temp-menu .frame-link')).find((candidate) => {
+                const href = candidate.getAttribute("href") || ""
+                if (!href.includes("/shell/")) {
+                  return false
+                }
+                const linkTarget = candidate.getAttribute("target") || ""
+                return targetsMatch(linkTarget, frameName)
+              }) || null
+            })() : null
             if (event.data.type === 'stream') {
-              const frameName = resolveFrameName(null, event.source)
               updateTabTimestamp(frameName, Date.now())
+            } else if (event.data.type === 'idle') {
+              return
             } else if (event.data.type === 'restart') {
+              if (shellLink) {
+                return
+              }
               <% if (type === 'run') { %>
               clearPersistedFrameLinkSelection()
               markForceDefaultSelection()
@@ -8018,10 +9184,43 @@ const rerenderMenuSection = (container, html) => {
               <% } %>
               return
             } else if (event.data.type === 'result') {
+              if (shellLink) {
+                return
+              }
               refresh()
               refresh_du()
               refresh_du("logs")
             } else {
+              if (shellLink && (event.data.type === "disconnect" || (event.data.type === 'event' && event.data.data === 'stop'))) {
+                const wasSelected = shellLink.classList.contains("selected")
+                const shellTarget = shellLink.getAttribute("target") || ""
+                const shellFrame = resolveBrowserviewFrameForLink(shellLink)
+                if (shellFrame) {
+                  shellFrame.remove()
+                }
+                shellLink.remove()
+                deleteTabState(frameName)
+                if (shellTarget) {
+                  deleteTabState(shellTarget)
+                }
+                if (wasSelected) {
+                  clearPersistedFrameLinkSelection()
+                  markForceDefaultSelection()
+                }
+                await syncTabs()
+                if (wasSelected) {
+                  const devTab = document.querySelector("#devtab.frame-link")
+                  if (devTab) {
+                    requestAnimationFrame(() => {
+                      renderSelection({ explicitTarget: devTab, force: true })
+                    })
+                  }
+                }
+                return
+              }
+              if (shellLink) {
+                return
+              }
               <% if (type === 'run') { %>
               if (event.data.type === 'start' || event.data.type === "disconnect" || (event.data.type === 'event' && event.data.data === 'stop')) {
                 ignorePersistedSelection = true
@@ -8038,8 +9237,6 @@ const rerenderMenuSection = (container, html) => {
 
 
   });
-  refresh_du()
-  refresh_du("logs")
   renderSelection({ force: true })
   <% if (type === "browse" || type === "files") { %>
     const repoStatusCache = new Map()
@@ -11449,36 +12646,31 @@ const rerenderMenuSection = (container, html) => {
 
   setInterval(() => {
     try {
-      let foreground_frame = document.querySelector("iframe:not(.hidden)")
-      let selected_tab = document.querySelector("aside .frame-link.selected")
-      let needs_selection
-      if (selected_tab) {
-        if (foreground_frame) {
-          const selectedTarget = selected_tab.tagName === "A" ? selected_tab.getAttribute("target") : ""
-          const frameName = foreground_frame.name || ""
-          if (targetsMatch(selectedTarget, frameName)) {
-            // do nothing
-          } else {
-            selected_tab.click()
+      const foreground_frame = document.querySelector("main.browserview iframe.selected:not(.hidden)")
+        || document.querySelector("main.browserview iframe:not(.hidden)")
+      const selected_tab = document.querySelector("aside .frame-link.selected")
+      if (foreground_frame) {
+        const frameName = foreground_frame.name || ""
+        const links = Array.from(document.querySelectorAll("aside .frame-link"))
+        const match = links.find((link) => {
+          if (link.tagName !== "A") {
+            return false
           }
-        } else {
-          selected_tab.click()
-        }
-      } else {
-        if (foreground_frame) {
-          const frameName = foreground_frame.name || ""
-          const links = Array.from(document.querySelectorAll("aside .frame-link"))
-          const match = links.find((link) => {
-            if (link.tagName !== "A") {
-              return false
-            }
-            const linkTarget = link.getAttribute("target") || ""
-            return targetsMatch(linkTarget, frameName)
-          })
-          if (match) {
+          const linkTarget = link.getAttribute("target") || ""
+          return targetsMatch(linkTarget, frameName)
+        })
+        if (match) {
+          const selectedTarget = selected_tab && selected_tab.tagName === "A"
+            ? (selected_tab.getAttribute("target") || "")
+            : ""
+          if (!selected_tab || !targetsMatch(selectedTarget, frameName)) {
             match.click()
           }
+        } else if (selected_tab) {
+          selected_tab.click()
         }
+      } else if (selected_tab) {
+        selected_tab.click()
       }
     } catch (e) {
     }
@@ -11899,32 +13091,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const defaultWorkspaceCwd = drawer.dataset.workspaceCwd || ""
   const widthKey = "pinokio.ask_ai.width"
   const ASK_AI_MIN_WIDTH = 240
-  const ASK_AI_FALLBACK_TOOLS = [
-    {
-      value: "claude",
-      label: "Claude Code",
-      iconSrc: "/asset/plugin/code/claude/claude.png",
-      href: "/run/plugin/code/claude/pinokio.js",
-      category: "CLI",
-      isDefault: true
-    },
-    {
-      value: "codex",
-      label: "OpenAI Codex",
-      iconSrc: "/asset/plugin/code/codex/openai.webp",
-      href: "/run/plugin/code/codex/pinokio.js",
-      category: "IDE",
-      isDefault: false
-    },
-    {
-      value: "gemini",
-      label: "Google Gemini CLI",
-      iconSrc: "/asset/plugin/code/gemini/gemini.jpeg",
-      href: "/run/plugin/code/gemini/pinokio.js",
-      category: "CLI",
-      isDefault: false
-    }
-  ]
 
   let open = false
   let currentUrl = ""
@@ -12050,53 +13216,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (parsed.origin !== window.location.origin) {
       return null
     }
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`
-  }
-
-  const resolveAskAiCliProvider = (rawUrl) => {
-    if (!rawUrl) {
-      return ""
-    }
-    try {
-      const parsed = new URL(rawUrl, window.location.origin)
-      const match = /^\/run\/plugin\/code\/(codex|claude|gemini)\/pinokio\.js$/i.exec(parsed.pathname || "")
-      if (!match || !match[1]) {
-        return ""
+    if (
+      parsed.pathname.startsWith("/run/plugin/")
+      || parsed.pathname.startsWith("/pinokio/run/plugin/")
+      || (parsed.pathname.startsWith("/run/api/") && /\/pinokio\.js$/i.test(parsed.pathname))
+    ) {
+      if (workspaceCwd && !parsed.searchParams.has("cwd")) {
+        parsed.searchParams.set("cwd", workspaceCwd)
       }
-      return String(match[1]).toLowerCase()
-    } catch (_) {
-      return ""
-    }
-  }
-
-  const startAskAiCliSession = async (provider, workspaceCwd) => {
-    const response = await fetch("/terminals/start", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        provider,
-        workspacePath: workspaceCwd || ""
-      })
-    })
-    let payload = null
-    try {
-      payload = await response.json()
-    } catch (_) {
-      payload = null
-    }
-    if (!response.ok || !payload || !payload.url) {
-      const message = payload && payload.error ? payload.error : `Failed to start ${provider}`
-      throw new Error(message)
-    }
-    try {
-      const parsed = new URL(payload.url, window.location.origin)
       parsed.searchParams.set("ask_ai", "1")
-      return `${parsed.pathname}${parsed.search}${parsed.hash}`
-    } catch (_) {
-      return payload.url
+      parsed.searchParams.delete("prompt")
     }
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`
   }
 
   const resolveWorkspaceCwd = (payload) => {
@@ -12142,7 +13273,19 @@ document.addEventListener("DOMContentLoaded", () => {
         return null
       }
       const href = typeof plugin.href === "string" ? plugin.href.trim() : ""
-      if (!href || !href.startsWith("/run/plugin/")) {
+      if (!href) {
+        return null
+      }
+      let parsed
+      try {
+        parsed = new URL(href, window.location.origin)
+      } catch (_) {
+        return null
+      }
+      const isPluginLauncher = parsed.pathname.startsWith("/run/plugin/")
+        || parsed.pathname.startsWith("/pinokio/run/plugin/")
+        || (parsed.pathname.startsWith("/run/api/") && /\/pinokio\.js$/i.test(parsed.pathname))
+      if (parsed.origin !== window.location.origin || !isPluginLauncher) {
         return null
       }
       const label = typeof plugin.title === "string" && plugin.title.trim()
@@ -12151,14 +13294,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const runs = Array.isArray(plugin.run) ? plugin.run : []
       const hasExec = runs.some((step) => step && step.method === "exec")
       const launchType = typeof plugin.launch_type === "string" ? plugin.launch_type.trim().toLowerCase() : ""
+      const explicitCategory = typeof plugin.category === "string" ? plugin.category.trim().toLowerCase() : ""
       const value = normalizeToolValue(href, label)
       if (!value) {
         return null
       }
       let category
-      if (launchType === "desktop") {
+      if (explicitCategory === "ide" || launchType === "desktop") {
         category = "IDE"
-      } else if (launchType === "terminal") {
+      } else if (explicitCategory === "cli" || launchType === "terminal") {
         category = "CLI"
       } else {
         category = hasExec ? "IDE" : "CLI"
@@ -12190,9 +13334,12 @@ document.addEventListener("DOMContentLoaded", () => {
       })
       .then((payload) => {
         const mapped = mapPluginMenuToAskAiTools(payload && Array.isArray(payload.menu) ? payload.menu : [])
-        return mapped.length > 0 ? mapped : ASK_AI_FALLBACK_TOOLS.slice()
+        return mapped
       })
-      .catch(() => ASK_AI_FALLBACK_TOOLS.slice())
+      .catch((error) => {
+        console.warn("Failed to load Ask AI plugins", error)
+        return []
+      })
       .finally(() => {
         askAiToolsPromise = null
       })
@@ -12225,7 +13372,7 @@ document.addEventListener("DOMContentLoaded", () => {
     copy.className = "ask-ai-drawer-picker-copy"
     const name = document.createElement("div")
     name.className = "ask-ai-drawer-picker-name"
-    name.textContent = tool.label || tool.value || "Agent"
+    name.textContent = tool.label || tool.value || "Plugin"
     const meta = document.createElement("div")
     meta.className = "ask-ai-drawer-picker-meta"
     meta.textContent = "Launch immediately"
@@ -12236,7 +13383,7 @@ document.addEventListener("DOMContentLoaded", () => {
     button.addEventListener("click", () => {
       const opened = openWithUrl(tool.href, { workspaceCwd })
       if (!opened) {
-        setPickerStatus("Could not launch this agent.")
+        setPickerStatus("Could not launch this plugin.")
       }
     })
     return button
@@ -12245,7 +13392,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const renderPicker = (tools, workspaceCwd) => {
     clearPickerList()
     if (!Array.isArray(tools) || tools.length === 0) {
-      setPickerStatus("No Ask AI agents available.")
+      setPickerStatus("No Ask AI plugins available.")
       return
     }
     const groups = new Map()
@@ -12269,7 +13416,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (items.length === 0) {
         return
       }
-      const displayCategory = category === "IDE" ? "Desktop App" : category
+      const displayCategory = category === "IDE"
+        ? "Desktop Plugins"
+        : (category === "CLI" ? "Terminal Plugins" : category)
       const group = document.createElement("div")
       group.className = "ask-ai-drawer-picker-group"
       const label = document.createElement("div")
@@ -12285,43 +13434,14 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     })
     if (!renderedCount) {
-      setPickerStatus("No Ask AI agents available.")
+      setPickerStatus("No Ask AI plugins available.")
       return
     }
-    setPickerStatus("Select a CLI or Desktop App agent to launch.")
+    setPickerStatus("Select a Terminal or Desktop plugin to launch.")
   }
 
   const openWithUrl = (rawUrl, opts = {}) => {
     const workspaceCwd = opts && typeof opts.workspaceCwd === "string" ? opts.workspaceCwd : ""
-    const cliProvider = resolveAskAiCliProvider(rawUrl)
-    if (cliProvider) {
-      pickerRequestId += 1
-      const requestId = pickerRequestId
-      setPickerStatus(`Starting ${cliProvider}...`)
-      setOpen(true)
-      setEmptyState(false)
-      setActionState(false)
-      startAskAiCliSession(cliProvider, workspaceCwd).then((sessionUrl) => {
-        if (requestId !== pickerRequestId) {
-          return
-        }
-        currentUrl = sessionUrl
-        setLocation(sessionUrl)
-        setActionState(true)
-        setEmptyState(false)
-        setPickerStatus("")
-        if (frame) {
-          frame.dataset.loaded = "1"
-          frame.src = sessionUrl
-        }
-      }).catch((error) => {
-        if (requestId !== pickerRequestId) {
-          return
-        }
-        setPickerStatus(error && error.message ? error.message : "Could not launch this agent.")
-      })
-      return true
-    }
     const normalized = normalizeLaunchUrl(rawUrl, workspaceCwd)
     if (!normalized) {
       return false
@@ -12358,7 +13478,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setEmptyState(true)
     setOpen(true)
     clearPickerList()
-    setPickerStatus("Loading agents...")
+    setPickerStatus("Loading plugins...")
     getAskAiTools().then((tools) => {
       if (requestId !== pickerRequestId) {
         return
@@ -12386,25 +13506,79 @@ document.addEventListener("DOMContentLoaded", () => {
     return /https:\/\/.*pinokio\..*(localhost|co)/.test(origin)
   }
 
-  const isKnownFrameSource = (sourceWindow) => {
-    if (!sourceWindow) {
+  const getBrowserviewFrames = () => Array.from(document.querySelectorAll("main.browserview iframe"))
+
+  const frameContainsSourceWindow = (containerWindow, sourceWindow, depth = 0) => {
+    if (!containerWindow || !sourceWindow) {
       return false
     }
-    const frames = document.querySelectorAll("main.browserview iframe")
-    return Array.from(frames).some((node) => node && node.contentWindow === sourceWindow)
+    if (containerWindow === sourceWindow) {
+      return true
+    }
+    if (depth > 12) {
+      return false
+    }
+    let childCount = 0
+    try {
+      childCount = containerWindow.frames ? containerWindow.frames.length : 0
+    } catch (_) {
+      childCount = 0
+    }
+    for (let index = 0; index < childCount; index += 1) {
+      let childWindow = null
+      try {
+        childWindow = containerWindow.frames[index]
+      } catch (_) {
+        childWindow = null
+      }
+      if (!childWindow) {
+        continue
+      }
+      if (childWindow === sourceWindow) {
+        return true
+      }
+      if (frameContainsSourceWindow(childWindow, sourceWindow, depth + 1)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  const resolveFrameSourceRecord = (sourceWindow) => {
+    if (!sourceWindow) {
+      return null
+    }
+    const frames = getBrowserviewFrames()
+    for (const node of frames) {
+      if (!node || !node.contentWindow) {
+        continue
+      }
+      if (node.contentWindow === sourceWindow) {
+        return {
+          root: node,
+          exact: node
+        }
+      }
+      if (frameContainsSourceWindow(node.contentWindow, sourceWindow)) {
+        return {
+          root: node,
+          exact: null
+        }
+      }
+    }
+    return null
+  }
+
+  const isKnownFrameSource = (sourceWindow) => {
+    return Boolean(resolveFrameSourceRecord(sourceWindow))
   }
 
   const resolveFrameUrlFromSource = (sourceWindow) => {
-    if (!sourceWindow) {
+    const record = resolveFrameSourceRecord(sourceWindow)
+    if (!record || !record.root) {
       return ""
     }
-    const frames = document.querySelectorAll("main.browserview iframe")
-    for (const node of frames) {
-      if (node && node.contentWindow === sourceWindow) {
-        return node.src || ""
-      }
-    }
-    return ""
+    return record.root.src || ""
   }
 
   const dispatchPinokioEvent = async (envelope, sourceWindow) => {
@@ -12435,33 +13609,6 @@ document.addEventListener("DOMContentLoaded", () => {
         payload,
         context
       })
-    })
-    if (!response.ok) {
-      return null
-    }
-    const result = await response.json().catch(() => null)
-    return result && typeof result === "object" ? result : null
-  }
-
-  const dispatchPinokioInjectRequest = async (envelope, sourceWindow) => {
-    const context = envelope && envelope.context && typeof envelope.context === "object"
-      ? { ...envelope.context }
-      : {}
-    if (!context.frameUrl) {
-      const frameUrl = resolveFrameUrlFromSource(sourceWindow)
-      if (frameUrl) {
-        context.frameUrl = frameUrl
-      }
-    }
-    context.pageUrl = window.location.href
-    context.currentUrl = window.location.href
-    const response = await fetch("/pinokio/inject", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify({ context })
     })
     if (!response.ok) {
       return null
@@ -12513,11 +13660,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return
     }
     const messageType = event.data.e
-    const isPinokioBridgeMessage = (
-      messageType === "pinokio:event" ||
-      messageType === "pinokio:inject:request"
-    )
-    const trusted = isTrustedOrigin(event.origin) || (isPinokioBridgeMessage && isKnownFrameSource(event.source))
+    const trusted = isTrustedOrigin(event.origin) || (messageType === "pinokio:event" && isKnownFrameSource(event.source))
     if (!trusted) {
       return
     }
@@ -12543,19 +13686,6 @@ document.addEventListener("DOMContentLoaded", () => {
             sourceFrameUrl
           })
         }
-      }).catch(() => {})
-    } else if (messageType === "pinokio:inject:request") {
-      dispatchPinokioInjectRequest(event.data, event.source).then((result) => {
-        if (!result || !result.ok || !event.source || typeof event.source.postMessage !== "function") {
-          return
-        }
-        event.source.postMessage({
-          e: "pinokio:inject:load",
-          scripts: Array.isArray(result.scripts) ? result.scripts : [],
-          context: {
-            frameUrl: resolveFrameUrlFromSource(event.source) || ""
-          }
-        }, "*")
       }).catch(() => {})
     }
   })
@@ -12630,7 +13760,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setLocation("")
   setActionState(false)
   setEmptyState(true)
-  setPickerStatus("Use the Ask AI button to load available agents.")
+  setPickerStatus("Use the Ask AI button to load available plugins.")
   setOpen(false)
   window.PinokioAskAiDrawer = {
     openWithAgent,
@@ -13344,6 +14474,17 @@ document.addEventListener("DOMContentLoaded", () => {
     return inputValue || textareaValue || overlayValue || url || ""
   }
 
+  const hasCheckinBridgeFlag = () => {
+    if (!url) return false
+    try {
+      const parsed = new URL(url, window.location.origin)
+      const value = parsed.searchParams.get("pinokio_checkin_bridge")
+      return value === "v1"
+    } catch (_) {
+      return false
+    }
+  }
+
   const syncLocation = () => {
     if (!locationInput) return
     if (!url) {
@@ -13397,6 +14538,31 @@ document.addEventListener("DOMContentLoaded", () => {
     frame.dataset.loaded = "1"
     frame.src = url
     setLocationFull(url)
+  }
+
+  const resolveCommunityCheckinTarget = (rawPath, rawUrl) => {
+    try {
+      let target = null
+      if (typeof rawPath === "string" && rawPath.startsWith("/registry/checkin")) {
+        target = new URL(rawPath, window.location.origin)
+      } else if (typeof rawUrl === "string" && rawUrl) {
+        target = new URL(rawUrl, window.location.origin)
+      } else {
+        return null
+      }
+      if (target.origin !== window.location.origin) {
+        return null
+      }
+      if (target.pathname !== "/registry/checkin") {
+        return null
+      }
+      if (!target.hash || !/token=/.test(target.hash)) {
+        return null
+      }
+      return `${target.pathname}${target.search}${target.hash}`
+    } catch (_) {
+      return null
+    }
   }
 
   const updateState = () => {
@@ -13629,6 +14795,23 @@ document.addEventListener("DOMContentLoaded", () => {
     setLocationFull(event.data.url)
   })
 
+  window.addEventListener("message", (event) => {
+    if (!event || !event.data || !frame) return
+    if (event.source !== frame.contentWindow) return
+    if (event.data.e !== "pinokio:community:checkin") return
+    if (communityOrigin && event.origin !== communityOrigin) return
+    if (!communityOrigin && !isTrustedOrigin(event.origin)) return
+    if (!hasCheckinBridgeFlag()) return
+    const target = resolveCommunityCheckinTarget(event.data.path, event.data.url)
+    if (!target) return
+    frame.dataset.loaded = "1"
+    frame.src = target
+    if (locationInput) {
+      locationInput.placeholder = ""
+    }
+    setLocationFull(target)
+  })
+
   if (!url) {
     if (connectBtn) {
       connectBtn.disabled = true
@@ -13732,6 +14915,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const max = scroller.scrollWidth - scroller.clientWidth
     scroller.classList.toggle("scroll-left", scroller.scrollLeft > 4)
     scroller.classList.toggle("scroll-right", scroller.scrollLeft < max - 4)
+  }
+  window.PinokioMenuScrollHints = {
+    update: updateScrollHints
   }
   updateScrollHints()
   scroller.addEventListener("scroll", updateScrollHints, { passive: true })

@@ -40,9 +40,11 @@ const Git = require('./git')
 const Connect = require('./connect')
 const Favicon = require('./favicon')
 const AppLauncher = require('./app_launcher')
+const WatchManager = require('./watch')
 const { DownloaderHelper } = require('node-downloader-helper');
 const { ProxyAgent } = require('proxy-agent');
 const fakeUa = require('fake-useragent');
+const sudo = process.platform === "win32" ? require("sudo-prompt-programfiles-x86") : null
 //const kill = require('./tree-kill');
 const kill = require('kill-sync')
 const ejs = require('ejs');
@@ -54,9 +56,37 @@ const VARS = {
   }
 }
 
+const powershellSingleQuote = (value) => {
+  return `'${String(value).replace(/'/g, "''")}'`
+}
+
+const windowsCacheRepairCommand = (targetPath) => {
+  const psPath = powershellSingleQuote(targetPath)
+  return [
+    "powershell.exe",
+    "-NoProfile",
+    "-ExecutionPolicy Bypass",
+    "-Command",
+    `"`,
+    "$ErrorActionPreference = 'Stop';",
+    `$p = ${psPath};`,
+    "$account = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name;",
+    "$grant = $account + ':(OI)(CI)F';",
+    "if (Test-Path -LiteralPath $p) {",
+    "  & takeown.exe /F $p /R /D Y;",
+    "  & icacls.exe $p /reset /T /C;",
+    "  & icacls.exe $p /grant $grant /T /C;",
+    "  Remove-Item -LiteralPath $p -Recurse -Force;",
+    "}",
+    "New-Item -ItemType Directory -Force -Path $p | Out-Null;",
+    "& icacls.exe $p /grant $grant /T /C;",
+    `"`
+  ].join(" ")
+}
+
 //const memwatch = require('@airbnb/node-memwatch');
 class Kernel {
-  schema = "<=6.0.0"
+  schema = "<=7.3.0"
   constructor(store) {
     this.fetch = fetch
 
@@ -385,6 +415,9 @@ class Kernel {
   path(...args) {
     return path.resolve(this.homedir, ...args)
   }
+  systemPath(...args) {
+    return path.resolve(__dirname, "..", "system", ...args)
+  }
   exists(...args) {
     if (args) {
       let abspath = this.path(...args)
@@ -395,13 +428,29 @@ class Kernel {
   }
   async load(...filepath) {
     let p = path.resolve(...filepath)
-    let json = (await this.loader.load(p)).resolved
-    return json
+    let loaded = await this.loader.load(p)
+    if (!loaded.resolved) {
+      const repaired = this.git && typeof this.git.repairMissingPath === "function"
+        ? await this.git.repairMissingPath(p)
+        : false
+      if (repaired) {
+        loaded = await this.loader.load(p)
+      }
+    }
+    return loaded.resolved
   }
   async require(...filepath) {
     let p = path.resolve(...filepath)
-    let json = (await this.loader.load(p)).resolved
-    return json
+    let loaded = await this.loader.load(p)
+    if (!loaded.resolved) {
+      const repaired = this.git && typeof this.git.repairMissingPath === "function"
+        ? await this.git.repairMissingPath(p)
+        : false
+      if (repaired) {
+        loaded = await this.loader.load(p)
+      }
+    }
+    return loaded.resolved
   }
   log(data, group, info) {
     this.log_queue.push({ data, group, info })
@@ -447,6 +496,30 @@ class Kernel {
     } catch (e) {
       return ''
     }
+  }
+  async elevatedCacheRepair(targetPath, log = console.log) {
+    if (this.platform !== "win32" || !sudo) {
+      return { ok: false, error: new Error("Elevated cache repair is only available on Windows") }
+    }
+    const command = windowsCacheRepairCommand(targetPath)
+    log(`elevated repair command=${command}`)
+    return new Promise((resolve) => {
+      sudo.exec(command, { name: "Pinokio" }, (error, stdout, stderr) => {
+        if (stdout && stdout.trim()) {
+          log(`elevated repair stdout ${stdout.trim()}`)
+        }
+        if (stderr && stderr.trim()) {
+          log(`elevated repair stderr ${stderr.trim()}`)
+        }
+        if (error) {
+          log(`elevated repair failed ${error.message || error}`)
+          resolve({ ok: false, error, stdout, stderr })
+        } else {
+          log(`elevated repair ok path=${targetPath}`)
+          resolve({ ok: true, stdout, stderr })
+        }
+      })
+    })
   }
   async ensureRouterMode() {
     const domain = await this.resolvePinokioDomain()
@@ -834,7 +907,6 @@ class Kernel {
       try {
         const result = execSync(`where ${name}`, { env: this.envs, encoding: "utf-8" })
         const lines = result.trim().split("\r\n")
-        console.log({ result, lines })
         if (pattern) {
           let match = null
           for(let line of lines) {
@@ -843,10 +915,8 @@ class Kernel {
               matches[2] += "g"   // if g option is not included, include it (need it for matchAll)
             }
             let re = new RegExp(matches[1], matches[2])
-            console.log("testing", { line, pattern, re })
             if (re.test(line)) {
               match = line 
-              console.log("matched", { line })
               break
             }
           }
@@ -859,7 +929,6 @@ class Kernel {
           }
         }
       } catch (e) {
-        console.log("Error", e)
         return null
       }
     } else {
@@ -894,6 +963,11 @@ class Kernel {
 ///    })
 ///  }
   async init(options) {
+    // Re-arm startup readiness on every init cycle so restart waits for the
+    // newly rebuilt template/sysinfo state instead of a stale resolved promise.
+    this.sysReady = new Promise((resolve) => {
+      this._resolveSysReady = resolve
+    })
 
     let home = this.store.get("home") || process.env.PINOKIO_HOME
     this.homedir = home
@@ -958,6 +1032,7 @@ class Kernel {
     this.loader = new Loader()
     this.bin = new Bin(this)
     this.api = new Api(this)
+    this.watch = new WatchManager(this)
     this.python = new Python(this)
     this.shell = new Shells(this)
     this.appLauncher = new AppLauncher(this)
@@ -988,9 +1063,22 @@ class Kernel {
       args: {},
     }
     this.procs = {}
+    this.activeProcessWaits = {}
     this.template = new Template()
     try {
       if (this.homedir) {
+        // Initialize template state before async startup tasks update or render it.
+        await this.template.init({
+          kernel: this,
+          system,
+          platform: this.platform,
+          arch: this.arch,
+          vram: this.vram,
+          ram: this.ram,
+          proxy: (port) => {
+            return this.api.get_proxy_url("/proxy", port)
+          },
+        })
 
         // 0. create homedir
         let home_exists = await this.exists(this.homedir)
@@ -1022,6 +1110,10 @@ class Kernel {
 
         // 2. mkdir all the folders if not already created
         await Environment.init_folders(this.homedir, this)
+        await Environment.ensurePinokioCacheDirs(this, {
+          throwOnFailure: true,
+          elevatedRepair: this.elevatedCacheRepair.bind(this)
+        })
 
         // if key.json doesn't exist, create an empty json file
         let ee = await this.exists(this.homedir, "key.json")
@@ -1063,9 +1155,6 @@ class Kernel {
             console.warn("Git init error:", err && err.message ? err.message : err)
           })
           this.shell.init().then(async () => {
-            this.bin.check({
-              bin: this.bin.preset("dev"),
-            })
             if (this.envs) {
               this.template.update({
                 env: this.envs,
@@ -1167,17 +1256,6 @@ class Kernel {
       //await this.shell.init()
 
       if (this.homedir) {
-        await this.template.init({
-          kernel: this,
-          system,
-          platform: this.platform,
-          arch: this.arch,
-          vram: this.vram,
-          ram: this.ram,
-          proxy: (port) => {
-            return this.api.get_proxy_url("/proxy", port)
-          },
-        })
 //        setTimeout(() => {
 //          this.refresh()    
 //        }, 3000)
@@ -1234,6 +1312,9 @@ class Kernel {
   }
   async exec(params, ondata) {
 //    params.path = this.path()
+    if (!Object.prototype.hasOwnProperty.call(params, "bluefairy")) {
+      params.bluefairy = "off"
+    }
     if (this.client) {
       params.cols = this.client.cols
       params.rows = this.client.rows

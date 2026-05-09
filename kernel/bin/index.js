@@ -21,7 +21,6 @@ const LLVM = require('./llvm')
 const VS = require("./vs")
 const Cuda = require("./cuda")
 const Torch = require("./torch")
-const { detectCommandLineTools } = require('./xcode-tools')
 const { buildCondaListFromMeta } = require('./conda-meta')
 const { glob } = require('glob')
 const fakeUa = require('fake-useragent');
@@ -48,6 +47,9 @@ class Bin {
   }
   async shell_start(params, ondata) {
     params.path = params.path || this.path()
+    if (!Object.prototype.hasOwnProperty.call(params, "bluefairy")) {
+      params.bluefairy = "off"
+    }
     if (this.client) {
       params.cols = this.client.cols
       params.rows = this.client.rows
@@ -57,6 +59,9 @@ class Bin {
   }
   async exec(params, ondata) {
     params.path = params.path || this.path()
+    if (!Object.prototype.hasOwnProperty.call(params, "bluefairy")) {
+      params.bluefairy = "off"
+    }
     if (this.client) {
       params.cols = this.client.cols
       params.rows = this.client.rows
@@ -123,7 +128,9 @@ class Bin {
     */
   }
   async unzip(filepath, dest, options, ondata) {
-    await this.exec({ message: `7z x ${options ? options : ''} ${filepath} -o${dest}` }, ondata)
+    const unzipCmd = this.platform === "win32" ? "7zz" : "7z"
+    const extra = options ? `${options} ` : ""
+    await this.exec({ message: `${unzipCmd} x ${extra}"${filepath}" -o"${dest}"` }, ondata)
   }
   async rm(src, ondata) {
     ondata({ raw: `rm ${src}\r\n` })
@@ -200,6 +207,27 @@ class Bin {
     e = this.merge_env(e, override_env)
 
     return e
+  }
+  activationCommands(shell) {
+    const commands = []
+    if (!this.mods) {
+      return commands
+    }
+    const skipBluefairy = !!(shell && shell.params && shell.params.bluefairy === "off")
+    for (const mod of this.mods) {
+      if (skipBluefairy && mod && mod.name === "bluefairy") {
+        continue
+      }
+      if (mod.mod && typeof mod.mod.activationCommands === "function") {
+        const value = mod.mod.activationCommands(shell)
+        if (Array.isArray(value)) {
+          commands.push(...value.filter(Boolean))
+        } else if (value) {
+          commands.push(value)
+        }
+      }
+    }
+    return commands
   }
   async init() {
     this.requirements_cache = {}
@@ -401,6 +429,7 @@ class Bin {
     /// A. installed packages detection
 
     this.installed_initialized = false
+    this.requirements_cache = {}
 
     //this.installed = {}
 
@@ -460,14 +489,7 @@ class Bin {
       this.installed.brew = new Set(brew)
 
 
-      // check brew_installed
-      let e = await this.kernel.bin.exists("homebrew")
-      const cltStatus = await detectCommandLineTools({
-        exec: (params) => this.exec(params, () => {})
-      })
-      console.log({ cltStatus })
-      this.brew_installed = e && cltStatus.valid
-
+      this.brew_installed = await this.kernel.bin.exists("homebrew")
       console.log("brew_installed", this.brew_installed)
 
     }
@@ -647,10 +669,7 @@ class Bin {
       mode = req.mode.trim()
     }
     if (!mode) {
-      mode = 'dev'
-      if (ondata) {
-        ondata({ html: '<b>No setup mode provided. Falling back to "dev".</b>' }, 'notify2')
-      }
+      throw new Error('kernel.bin.install requires `requirements` array or `mode` string in params')
     }
     const preset = this.preset(mode)
     if (!preset) {
@@ -1039,7 +1058,8 @@ class Bin {
         let r = requirements[i]
         let fingerprint = JSON.stringify(r)
         let installed
-        if (fingerprint in this.requirements_cache) {
+        const canUseCache = r.name !== "brew" || r.type
+        if (canUseCache && fingerprint in this.requirements_cache) {
           let relevant = this.relevant(r)
           requirements[i].relevant = relevant
           if (relevant) {
@@ -1066,7 +1086,9 @@ class Bin {
               requirements[i].dependencies = dependencies
             }
             installed = await this.check_installed(r, dependencies)
-            this.requirements_cache[fingerprint] = installed
+            if (canUseCache) {
+              this.requirements_cache[fingerprint] = installed
+            }
             //if (installed) {
             //  // cache if true
             //  this.requirements_cache[fingerprint] = true

@@ -5,33 +5,6 @@
     return;
   }
 
-  const FALLBACK_TOOLS = [
-    {
-      value: 'claude',
-      label: 'Claude Code',
-      iconSrc: '/asset/plugin/code/claude/claude.png',
-      isDefault: true,
-      href: '/run/plugin/code/claude/pinokio.js',
-      category: 'CLI',
-    },
-    {
-      value: 'codex',
-      label: 'OpenAI Codex',
-      iconSrc: '/asset/plugin/code/codex/openai.webp',
-      isDefault: false,
-      href: '/run/plugin/code/codex/pinokio.js',
-      category: 'CLI',
-    },
-    {
-      value: 'gemini',
-      label: 'Google Gemini CLI',
-      iconSrc: '/asset/plugin/code/gemini/gemini.jpeg',
-      isDefault: false,
-      href: '/run/plugin/code/gemini/pinokio.js',
-      category: 'CLI',
-    },
-  ];
-
   const CATEGORY_ORDER = ['CLI', 'IDE'];
   const MODAL_VARIANTS = {
     CREATE: 'create',
@@ -51,6 +24,25 @@
   let modalPrevFocus = null;
   let modalPrevInert = null;
 
+  function getPluginToolCategory(plugin) {
+    const explicitCategory = typeof plugin?.category === 'string' ? plugin.category.trim().toLowerCase() : '';
+    if (explicitCategory === 'ide') {
+      return 'IDE';
+    }
+    if (explicitCategory === 'cli') {
+      return 'CLI';
+    }
+    const launchType = typeof plugin?.launch_type === 'string' ? plugin.launch_type.trim().toLowerCase() : '';
+    if (launchType === 'desktop') {
+      return 'IDE';
+    }
+    if (launchType === 'terminal') {
+      return 'CLI';
+    }
+    const runs = Array.isArray(plugin?.run) ? plugin.run : [];
+    return runs.some((step) => step && step.method === 'exec') ? 'IDE' : 'CLI';
+  }
+
   function mapPluginMenuToCreateLauncherTools(menu) {
     if (!Array.isArray(menu)) return [];
 
@@ -64,7 +56,7 @@
 
         let value = '';
         if (href) {
-          // Normalize href to a plugin-relative path for the backend (e.g., code/codex)
+          // Normalize href to a launcher tool path for the backend.
           const normalized = href.replace(/^\/run/, '').replace(/^\/+/, '');
           const parts = normalized.split('/').filter(Boolean);
           // Expect /plugin/<path...>/pinokio.js -> want <path...>
@@ -90,16 +82,13 @@
           return null;
         }
         const iconSrc = plugin.image || null;
-        const runs = Array.isArray(plugin.run) ? plugin.run : [];
-        const hasExec = runs.some((step) => step && step.method === 'exec');
-        const category = hasExec ? 'IDE' : 'CLI';
         return {
           value,
           label,
           iconSrc,
           isDefault: Boolean(plugin.default === true),
           href: href || null,
-          category,
+          category: getPluginToolCategory(plugin),
         };
       })
       .filter(Boolean);
@@ -123,11 +112,11 @@
       .then((data) => {
         const menu = data && Array.isArray(data.menu) ? data.menu : [];
         const tools = mapPluginMenuToCreateLauncherTools(menu);
-        return tools.length > 0 ? tools : FALLBACK_TOOLS.slice();
+        return tools;
       })
       .catch((error) => {
-        console.warn('Falling back to default agents for create launcher modal', error);
-        return FALLBACK_TOOLS.slice();
+        console.warn('Failed to load create launcher plugins', error);
+        return [];
       })
       .finally(() => {
         loadingTools = null;
@@ -180,7 +169,7 @@
       const pattern = new RegExp(`{{\\s*${escapeRegExp(name)}\\s*}}`, 'g');
       result = result.replace(pattern, value);
     });
-    return result;
+    return result.replace(/\r\n?/g, '\n');
   }
 
   function buildToolOptions(tools) {
@@ -189,7 +178,7 @@
 
     const title = document.createElement('div');
     title.className = 'create-launcher-modal-tools-title';
-    title.textContent = 'Select Agent';
+    title.textContent = 'Select Plugin';
 
     const options = document.createElement('div');
     options.className = 'create-launcher-modal-tools-options';
@@ -283,7 +272,7 @@
     if (!toolEntries.length) {
       const emptyState = document.createElement('div');
       emptyState.className = 'create-launcher-modal-tools-empty';
-      emptyState.textContent = 'No agents available.';
+      emptyState.textContent = 'No plugins available.';
       options.appendChild(emptyState);
     }
 
@@ -481,6 +470,12 @@
     const header = document.createElement('div');
     header.className = 'create-launcher-modal-header';
 
+    const body = document.createElement('div');
+    body.className = 'create-launcher-modal-body';
+
+    const footer = document.createElement('div');
+    footer.className = 'create-launcher-modal-footer';
+
     const iconWrapper = document.createElement('div');
     iconWrapper.className = 'create-launcher-modal-icon';
 
@@ -596,15 +591,19 @@
     linkRow.appendChild(advancedLink);
     linkRow.appendChild(bookmarkletLink);
 
+    body.appendChild(promptLabel);
+    body.appendChild(templateWrapper);
+    body.appendChild(folderLabel);
+    body.appendChild(attachments.wrapper);
+    body.appendChild(toolWrapper);
+    body.appendChild(error);
+
+    footer.appendChild(actions);
+    footer.appendChild(linkRow);
+
     container.appendChild(header);
-    container.appendChild(promptLabel);
-    container.appendChild(templateWrapper);
-    container.appendChild(folderLabel);
-    container.appendChild(attachments.wrapper);
-    container.appendChild(toolWrapper);
-    container.appendChild(error);
-    container.appendChild(actions);
-    container.appendChild(linkRow);
+    container.appendChild(body);
+    container.appendChild(footer);
 
     if (overlay) {
       overlay.appendChild(container);
@@ -914,7 +913,7 @@
     let uploadToken = '';
 
     if (!selectedEntry || !selectedHref) {
-      ui.error.textContent = 'Please select an agent.';
+      ui.error.textContent = 'Please select a plugin.';
       return;
     }
 
@@ -1095,7 +1094,9 @@
     ui.templateManager.syncTemplateFields(ui.promptTextarea.value, defaults.templateValues || {});
 
     requestAnimationFrame(() => {
-      ui.promptTextarea.focus();
+      if (!ui.promptTextarea.value.trim()) {
+        ui.promptTextarea.focus();
+      }
     });
 
     return ui;

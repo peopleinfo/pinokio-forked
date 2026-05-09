@@ -434,6 +434,65 @@ const openURL = (url) => {
     console.warn('[Util.openURL] exec failed:', err && err.message ? err.message : err)
   }
 }
+const openURI = async (uri) => {
+  const platform = os.platform()
+  const launch = (command, args) => {
+    return new Promise((resolve, reject) => {
+      let settled = false
+      const settle = (fn, value) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        fn(value)
+      }
+      const timer = setTimeout(() => {
+        settle(resolve, {
+          ok: true,
+          command,
+          status: 'started'
+        })
+      }, 3000)
+      const child = spawn(command, args, {
+        detached: true,
+        stdio: 'ignore'
+      })
+      child.on('error', (error) => {
+        settle(reject, error)
+      })
+      child.on('close', (code) => {
+        if (code) {
+          settle(reject, new Error(`${command} exited with code ${code}`))
+        } else {
+          settle(resolve, {
+            ok: true,
+            command,
+            status: 'exited'
+          })
+        }
+      })
+      child.unref()
+    })
+  }
+  try {
+    if (platform === 'darwin') {
+      return await launch('open', [uri])
+    } else if (platform === 'win32') {
+      try {
+        return await launch('rundll32.exe', ['url.dll,FileProtocolHandler', uri])
+      } catch (error) {
+        console.warn('[Util.openURI] rundll32 failed, falling back to explorer:', error && error.message ? error.message : error)
+        return await launch('explorer.exe', [uri])
+      }
+    }
+    return await launch('xdg-open', [uri])
+  } catch (err) {
+    console.warn('[Util.openURI] spawn failed:', err && err.message ? err.message : err)
+    return {
+      ok: false,
+      error: err && err.message ? err.message : String(err)
+    }
+  }
+}
 const openfs = (dirPath, options, kernel) => {
   let command = '';
   const platform = os.platform()
@@ -626,7 +685,11 @@ const find_python = async (root) => {
   } else {
     python_pattern = "**/python"; // Matches python, python3, python3.x
   }
-  const pythonBinaries = await glob(python_pattern, { nodir: true, cwd: root });
+  const pythonBinaries = await glob(python_pattern, {
+    nodir: true,
+    cwd: root,
+    ignore: ["**/.git/**", "**/node_modules/**"],
+  });
   return pythonBinaries
 }
 const find_venv = async (root) => {
@@ -636,7 +699,12 @@ const find_venv = async (root) => {
   } else {
     python_pattern = "**/python"; // Matches python, python3, python3.x
   }
-  const pythonBinaries = await glob(python_pattern, { nodir: true, cwd: root, absolute: true });
+  const pythonBinaries = await glob(python_pattern, {
+    nodir: true,
+    cwd: root,
+    absolute: true,
+    ignore: ["**/.git/**", "**/node_modules/**"],
+  });
   const venvs = pythonBinaries.map((p) => {
     return path.resolve(p, "../..") 
   })
@@ -1188,6 +1256,7 @@ module.exports = {
   find_venv,
   fill_object,
   run,
+  openURI,
   openURL,
   u2p,
   p2u,

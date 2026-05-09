@@ -168,6 +168,8 @@ body.dark .context-menu-wrapper {
   background: whitesmoke !important;
   border-radius: 10px;
   overflow: hidden;
+  min-width: 220px;
+  padding: 6px 0;
 }
 .menu-btns {
   position: relative;
@@ -193,11 +195,24 @@ body.dark .context-menu-wrapper {
   background: none !important;
   border: none !important;
   display: block;
-  width: 80px;
-  padding: 6px 10px !important;
+  width: 100%;
+  padding: 7px 14px !important;
   text-align: left;
   color: black;
   margin: 0 !important;
+}
+.context-menu-section-title {
+  padding: 8px 14px 6px;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(0,0,0,0.45);
+}
+.context-menu-divider {
+  height: 1px;
+  margin: 6px 0;
+  background: rgba(0,0,0,0.08);
 }
 body.dark .btn {
   background: rgba(255,255,255,0.05) !important;
@@ -214,6 +229,12 @@ body.dark .btn {
 body.dark .context-menu .btn {
   color: white;
   background: none !important;
+}
+body.dark .context-menu-section-title {
+  color: rgba(255,255,255,0.55);
+}
+body.dark .context-menu-divider {
+  background: rgba(255,255,255,0.08);
 }
 body.dark .open-menu, body.dark .browse, body.dark .toggle-star {
   border: none !important;
@@ -236,11 +257,100 @@ body.dark .open-menu, body.dark .browse, body.dark .toggle-star {
   border: 1px solid rgba(0, 0, 0, 0.3);
   */
 }
+.terminals-link .terminals-link-indicator {
+  margin-left: 2px;
+  font-size: 12px;
+  opacity: 0.72;
+}
+.terminals-link i {
+  color: inherit !important;
+}
+.menu-btns .shutdown,
+.menu-btns .terminals-link.is-online {
+  border-radius: 0 !important;
+  background: var(--pinokio-chrome-accent-bg-light) !important;
+  border-color: var(--pinokio-chrome-accent-bg-light) !important;
+  color: var(--pinokio-chrome-accent-fg-light) !important;
+}
+body.dark .menu-btns .shutdown,
+body.dark .menu-btns .terminals-link.is-online {
+  background: var(--pinokio-chrome-accent-bg-dark) !important;
+  border-color: var(--pinokio-chrome-accent-bg-dark) !important;
+  color: var(--pinokio-chrome-accent-fg-dark) !important;
+}
+.menu-btns .shutdown:hover,
+.menu-btns .shutdown:focus-visible,
+.menu-btns .shutdown:active,
+.menu-btns .terminals-link.is-online:hover,
+.menu-btns .terminals-link.is-online:focus-visible,
+.menu-btns .terminals-link.is-online:active {
+  background: var(--pinokio-chrome-accent-bg-light) !important;
+  border-color: var(--pinokio-chrome-accent-bg-light) !important;
+  color: var(--pinokio-chrome-accent-fg-light) !important;
+  outline: none;
+}
+body.dark .menu-btns .shutdown:hover,
+body.dark .menu-btns .shutdown:focus-visible,
+body.dark .menu-btns .shutdown:active,
+body.dark .menu-btns .terminals-link.is-online:hover,
+body.dark .menu-btns .terminals-link.is-online:focus-visible,
+body.dark .menu-btns .terminals-link.is-online:active {
+  background: var(--pinokio-chrome-accent-bg-dark) !important;
+  border-color: var(--pinokio-chrome-accent-bg-dark) !important;
+  color: var(--pinokio-chrome-accent-fg-dark) !important;
+}
+.menu-btns .shutdown i,
+.menu-btns .terminals-link.is-online i {
+  color: inherit !important;
+}
 .toggle-star.is-starred i {
   color: #b8860b;
 }
 body.dark .toggle-star.is-starred i {
   color: #ffcc66;
+}
+.noty_bar.home-star-toast {
+  max-width: 360px !important;
+  background: linear-gradient(180deg, rgba(24, 28, 39, 0.98), rgba(14, 17, 26, 0.98)) !important;
+  color: #f8f4ea !important;
+  border: 1px solid rgba(255, 214, 102, 0.22) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28) !important;
+}
+.noty_bar.home-star-toast .noty_body {
+  padding: 12px 14px !important;
+}
+.home-star-toast__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.home-star-toast__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  background: rgba(255, 214, 102, 0.14);
+  color: #ffd666;
+  box-shadow: inset 0 0 0 1px rgba(255, 214, 102, 0.18);
+}
+.home-star-toast__content {
+  min-width: 0;
+}
+.home-star-toast__title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #fff7d6;
+}
+.home-star-toast__text {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(248, 244, 234, 0.78);
 }
 .open-menu.selected {
   border: none !important;
@@ -337,183 +447,78 @@ aside .btn-tab .btn i {
 aside .btn-tab .btn .caption {
   display: block;
 }
-.home-apps-header {
-  margin: 0;
-  padding: 8px 12px 8px;
-}
-
-.home-apps-header h2 {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.2;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.home-apps-header p {
-  margin: 4px 0 0;
-  font-size: 12px;
-  line-height: 1.35;
-  color: rgba(15, 23, 42, 0.7);
-  word-break: break-word;
-}
-
-.home-apps-header-actions {
-  margin-top: 4px;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  flex-wrap: wrap;
-  min-width: 0;
-}
-
-.home-apps-header-main-actions {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  flex-wrap: wrap;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.home-apps-header-actions .qr {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-
-.home-apps-header-actions .qr > a {
-  display: inline-flex !important;
-  align-items: center;
-  gap: 5px;
-  height: 25px;
-  min-height: 25px;
-  padding: 0 10px;
-  border: 1px solid rgba(127, 127, 127, 0.3);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.8);
-  text-decoration: none !important;
-  color: inherit !important;
-  font-size: 11px;
-  line-height: 1;
-  font-weight: 700;
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-.home-apps-header-actions .qr img {
-  display: none;
-}
-
-.home-apps-header-actions .qr .caption {
-  display: block;
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.25;
-  font-weight: 700;
-  width: auto !important;
-  text-align: left;
-  white-space: nowrap;
-  word-break: normal;
-}
-
-.home-apps-header-actions .peer-access-trigger-icon {
-  font-size: 11px;
-  line-height: 1;
-}
-
-.home-apps-header-actions .qr .caption:last-child {
-  display: none;
-}
-
-.home-apps-header .home-apps-create-btn {
-  display: inline-flex !important;
-  align-items: center;
-  gap: 5px;
-  border: 1px solid royalblue !important;
-  background: royalblue !important;
-  color: #f8fbff !important;
-  border-radius: 4px;
-  height: 25px;
-  min-height: 25px;
-  padding: 0 10px;
-  font-size: 11px;
-  line-height: 1;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  box-sizing: border-box;
-}
-
-.home-apps-header .home-apps-create-btn i {
-  font-size: 11px;
-  line-height: 1;
-}
-
-.home-apps-header .home-apps-create-btn:hover {
-  border-color: #315cd8 !important;
-  background: #315cd8 !important;
-}
-
-.home-apps-header .home-apps-create-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.home-apps-header .home-apps-sort {
+.home-search-form .home-apps-sort {
+  --home-sort-bg: rgba(0, 0, 0, 0.05);
+  --home-sort-border: rgba(0, 0, 0, 0.08);
+  --home-sort-hover-border: rgba(0, 0, 0, 0.12);
+  --home-sort-hover-bg: rgba(0, 0, 0, 0.08);
+  --home-sort-focus-border: rgba(0, 0, 0, 0.14);
+  --home-sort-focus-bg: rgba(0, 0, 0, 0.08);
+  --home-sort-text: rgba(15, 23, 42, 0.9);
+  --home-sort-muted: rgba(15, 23, 42, 0.66);
+  --home-sort-dropdown-bg: rgba(255, 255, 255, 0.98);
+  --home-sort-dropdown-border: rgba(15, 23, 42, 0.12);
+  --home-sort-dropdown-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  --home-sort-option-hover-bg: rgba(15, 23, 42, 0.05);
+  --home-sort-option-hover-text: rgba(15, 23, 42, 0.95);
+  --home-sort-option-selected-bg: rgba(15, 23, 42, 0.08);
+  --home-sort-option-selected-text: rgba(15, 23, 42, 0.96);
   display: inline-flex;
   position: relative;
   align-items: center;
   gap: 5px;
-  height: 25px;
-  min-height: 25px;
+  height: 30px;
+  min-height: 30px;
   padding: 0 10px;
-  border: 1px solid rgba(127, 127, 127, 0.3);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--home-sort-border);
+  border-radius: 6px;
+  background: var(--home-sort-bg);
+  color: var(--home-sort-text);
   box-sizing: border-box;
   margin-left: auto;
-  align-self: flex-start;
+  align-self: center;
   flex: 0 0 auto;
+  cursor: pointer;
   transition: border-color 0.12s ease, background-color 0.12s ease;
 }
 
-.home-apps-header .home-apps-sort:hover {
-  border-color: rgba(65, 105, 225, 0.45);
-  background: rgba(65, 105, 225, 0.08);
+.home-search-form .home-apps-sort:hover {
+  border-color: var(--home-sort-hover-border);
+  background: var(--home-sort-hover-bg);
 }
 
-.home-apps-header .home-apps-sort:focus-within {
-  border-color: royalblue;
-  background: rgba(65, 105, 225, 0.12);
+.home-search-form .home-apps-sort:focus-within {
+  border-color: var(--home-sort-focus-border);
+  background: var(--home-sort-focus-bg);
 }
 
-.home-apps-header .home-apps-sort .home-apps-sort-icon {
+.home-search-form .home-apps-sort .home-apps-sort-icon {
   font-size: 11px;
   line-height: 1;
   opacity: 0.85;
   flex: 0 0 auto;
+  color: var(--home-sort-muted);
 }
 
-.home-apps-header .home-apps-sort .home-apps-sort-caret {
+.home-search-form .home-apps-sort .home-apps-sort-caret {
   font-size: 9px;
   line-height: 1;
   opacity: 0.7;
   pointer-events: none;
   flex: 0 0 auto;
+  color: var(--home-sort-muted);
 }
 
-.home-apps-header .home-apps-sort label {
+.home-search-form .home-apps-sort label {
   font-size: 11px;
   line-height: 1;
   font-weight: 700;
-  color: rgba(15, 23, 42, 0.78);
+  color: var(--home-sort-muted);
   margin: 0;
   white-space: nowrap;
 }
 
-.home-apps-header .home-apps-sort select {
+.home-search-form .home-apps-sort select {
   border: 0;
   outline: none;
   background: transparent;
@@ -530,224 +535,170 @@ aside .btn-tab .btn .caption {
   cursor: pointer;
 }
 
-.home-apps-header .home-apps-sort .ts-wrapper {
+.home-search-form .home-apps-sort .ts-wrapper {
   flex: 0 0 auto;
   width: 132px;
   min-width: 132px;
 }
 
-.home-apps-header .home-apps-sort .ts-wrapper.single .ts-control {
+.home-search-form .home-apps-sort .ts-wrapper.single .ts-control {
   border: 0;
   outline: none;
   background: transparent;
+  background-image: none;
   box-shadow: none;
   padding: 0;
   margin: 0;
   min-height: 0;
   border-radius: 0;
   cursor: pointer;
-}
-
-.home-apps-header .home-apps-sort .ts-control > .item {
-  font-size: 11px;
-  line-height: 1;
-  font-weight: 700;
   color: inherit;
 }
 
-.home-apps-header .home-apps-sort .ts-control > input {
+.home-search-form .home-apps-sort .ts-control > .item {
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--home-sort-text);
+}
+
+.home-search-form .home-apps-sort .ts-control > input {
   width: 0 !important;
   min-width: 0 !important;
   margin: 0 !important;
   padding: 0 !important;
+  color: var(--home-sort-text);
 }
 
-.home-apps-header .home-apps-sort .ts-dropdown {
+.home-search-form .home-apps-sort .ts-dropdown {
   margin: 8px 0 0;
   width: 100%;
   min-width: 100%;
-  border: 1px solid rgba(127, 127, 127, 0.25);
+  border: 1px solid var(--home-sort-dropdown-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.14);
+  background: var(--home-sort-dropdown-bg);
+  box-shadow: var(--home-sort-dropdown-shadow);
 }
 
-.home-apps-header .home-apps-sort .ts-dropdown .option {
+.home-search-form .home-apps-sort .ts-dropdown .ts-dropdown-content {
+  background: transparent;
+}
+
+.home-search-form .home-apps-sort .ts-dropdown .option {
   font-size: 12px;
-  font-weight: 600;
-  color: rgba(15, 23, 42, 0.9);
+  font-weight: 700;
+  color: var(--home-sort-text);
   padding: 7px 10px;
   white-space: nowrap;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
-.home-apps-header .home-apps-sort .ts-dropdown .option.active,
-.home-apps-header .home-apps-sort .ts-dropdown [data-selectable].option:hover {
-  background: rgba(65, 105, 225, 0.14);
-  color: rgba(15, 23, 42, 0.95);
+.home-search-form .home-apps-sort .ts-dropdown .option.active,
+.home-search-form .home-apps-sort .ts-dropdown [data-selectable].option:hover {
+  background: var(--home-sort-option-hover-bg);
+  color: var(--home-sort-option-hover-text);
 }
 
-body.dark .home-apps-header {
-  border-bottom-color: rgba(255, 255, 255, 0.14);
+.home-search-form .home-apps-sort .ts-dropdown .option.selected,
+.home-search-form .home-apps-sort .ts-dropdown .option.selected.active,
+.home-search-form .home-apps-sort .ts-dropdown [data-selectable].option.selected:hover {
+  background: var(--home-sort-option-selected-bg);
+  color: var(--home-sort-option-selected-text);
 }
 
-body.dark .home-apps-header h2 {
-  color: rgba(241, 245, 249, 0.96);
+body.dark .home-search-form .home-apps-sort {
+  --home-sort-bg: rgba(255, 255, 255, 0.06);
+  --home-sort-border: rgba(255, 255, 255, 0.05);
+  --home-sort-hover-border: rgba(255, 255, 255, 0.1);
+  --home-sort-hover-bg: rgba(255, 255, 255, 0.09);
+  --home-sort-focus-border: rgba(255, 255, 255, 0.12);
+  --home-sort-focus-bg: rgba(255, 255, 255, 0.1);
+  --home-sort-text: rgba(226, 232, 240, 0.92);
+  --home-sort-muted: rgba(226, 232, 240, 0.78);
+  --home-sort-dropdown-bg: rgba(24, 24, 27, 0.98);
+  --home-sort-dropdown-border: rgba(255, 255, 255, 0.1);
+  --home-sort-dropdown-shadow: 0 14px 28px rgba(0, 0, 0, 0.42);
+  --home-sort-option-hover-bg: rgba(255, 255, 255, 0.06);
+  --home-sort-option-hover-text: rgba(248, 250, 252, 0.98);
+  --home-sort-option-selected-bg: rgba(255, 255, 255, 0.08);
+  --home-sort-option-selected-text: rgba(248, 250, 252, 0.98);
 }
 
-body.dark .home-apps-header p {
-  color: rgba(203, 213, 225, 0.86);
+body.dark .home-search-form .home-apps-sort:hover {
+  border-color: var(--home-sort-hover-border);
+  background: var(--home-sort-hover-bg);
 }
 
-body.dark .home-apps-header .home-apps-create-btn {
-  border-color: royalblue !important;
-  background: royalblue !important;
-  color: rgba(248, 250, 252, 0.98) !important;
+body.dark .home-search-form .home-apps-sort:focus-within {
+  border-color: var(--home-sort-focus-border);
+  background: var(--home-sort-focus-bg);
 }
 
-body.dark .home-apps-header .home-apps-create-btn:hover {
-  border-color: #315cd8 !important;
-  background: #315cd8 !important;
+body.dark .home-search-form .home-apps-sort label {
+  color: var(--home-sort-muted);
 }
 
-body.dark .home-apps-header .home-apps-sort {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(15, 23, 42, 0.55);
+body.dark .home-search-form .home-apps-sort select {
+  color: var(--home-sort-text);
 }
 
-body.dark .home-apps-header .home-apps-sort:hover {
-  border-color: rgba(99, 140, 255, 0.65);
-  background: rgba(65, 105, 225, 0.2);
+body.dark .home-search-form .home-apps-sort .ts-control > .item {
+  color: var(--home-sort-text);
 }
 
-body.dark .home-apps-header .home-apps-sort:focus-within {
-  border-color: #5f84ff;
-  background: rgba(65, 105, 225, 0.28);
+body.dark .home-search-form .home-apps-sort .ts-dropdown {
+  border-color: var(--home-sort-dropdown-border);
+  background: var(--home-sort-dropdown-bg);
+  box-shadow: var(--home-sort-dropdown-shadow);
 }
 
-body.dark .home-apps-header .home-apps-sort label {
-  color: rgba(226, 232, 240, 0.9);
+body.dark .home-search-form .home-apps-sort .ts-dropdown .option {
+  color: var(--home-sort-text);
 }
 
-body.dark .home-apps-header .home-apps-sort select {
-  color: rgba(226, 232, 240, 0.9);
-}
-
-body.dark .home-apps-header .home-apps-sort .ts-control > .item {
-  color: rgba(226, 232, 240, 0.9);
-}
-
-body.dark .home-apps-header .home-apps-sort .ts-dropdown {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(15, 23, 42, 0.98);
-  box-shadow: 0 14px 28px rgba(2, 6, 23, 0.68);
-}
-
-body.dark .home-apps-header .home-apps-sort .ts-dropdown .option {
-  color: rgba(226, 232, 240, 0.92);
-}
-
-body.dark .home-apps-header .home-apps-sort .ts-dropdown .option.active,
-body.dark .home-apps-header .home-apps-sort .ts-dropdown [data-selectable].option:hover {
-  background: rgba(95, 132, 255, 0.24);
-  color: rgba(248, 250, 252, 0.98);
-}
-
-body.dark .home-apps-header-actions .qr {
-  border-color: transparent;
-  background: transparent;
-}
-
-body.dark .home-apps-header-actions .qr > a {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(15, 23, 42, 0.55);
-}
-.home-mode-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 6px;
-  overflow: visible;
-  background: rgba(0, 0, 0, 0.05);
-  box-sizing: border-box;
-}
-body.dark .home-mode-switch {
-  border-color: rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.06);
-}
-.home-mode-switch .mode-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 34px;
-  padding: 0 12px;
-  border-radius: 4px;
-  text-decoration: none;
-  color: inherit;
-  border: none;
-  background: transparent;
-  font-weight: 600;
-  font-size: 13px;
-  opacity: 1;
-  line-height: 1;
-  box-sizing: border-box;
-}
-.home-mode-switch .mode-link:hover {
-  background: rgba(65, 105, 225, 0.12);
-}
-.home-mode-switch .mode-link.selected,
-.home-mode-switch .mode-link[aria-current="page"] {
-  background: royalblue !important;
-  color: #fff !important;
-}
-body.dark .home-mode-switch .mode-link.selected,
-body.dark .home-mode-switch .mode-link[aria-current="page"] {
-  background: royalblue !important;
-  color: #fff !important;
-}
-.home-search-mode-switch {
-  flex: 0 0 auto;
-  margin-right: 0;
-  align-self: center;
+body.dark .home-search-form .home-apps-sort .ts-dropdown .option.active,
+body.dark .home-search-form .home-apps-sort .ts-dropdown [data-selectable].option:hover {
+  background: var(--home-sort-option-hover-bg);
+  color: var(--home-sort-option-hover-text);
 }
 .home-search-form {
   align-items: center;
   gap: 8px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+}
+body.is-home {
+  --home-page-accent: var(--pinokio-chrome-accent-fg-light);
+  --home-page-nav-bg: color-mix(in srgb, #f5f6f8 96%, white);
+  --home-page-nav-border: rgba(15, 23, 42, 0.12);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--home-page-accent) 10%, transparent), transparent 24rem),
+    linear-gradient(180deg, #fafbfd 0%, #f3f5f8 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  isolation: isolate;
+  min-height: 100vh;
+}
+body.dark.is-home {
+  --home-page-accent: var(--pinokio-chrome-accent-fg-dark);
+  --home-page-nav-bg: color-mix(in srgb, #090b10 94%, black);
+  --home-page-nav-border: rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--home-page-accent) 16%, transparent), transparent 24rem),
+    linear-gradient(180deg, #0a0c10 0%, #07090d 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+body.is-home > header.navheader {
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  isolation: isolate;
 }
 body.dark .home-search-form {
   border-bottom-color: rgba(148, 163, 184, 0.22);
 }
-.home-search-form .home-search-mode-switch {
-  align-self: center;
-}
-.home-search-form .home-mode-switch {
-  gap: 0;
-  padding: 0;
-  height: 25px;
-  align-items: center;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-.home-search-form .home-mode-switch .mode-link {
-  height: 100%;
-  padding: 0 10px;
-  border-radius: 0;
-  display: inline-flex;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 400;
-}
-.home-search-form .home-mode-switch .mode-link + .mode-link {
-  border-left: 1px solid rgba(0, 0, 0, 0.14);
-}
-body.dark .home-search-form .home-mode-switch .mode-link + .mode-link {
-  border-left-color: rgba(255, 255, 255, 0.05);
-}
 .home-search-form input[type='search'].flexible {
-  height: 25px;
-  min-height: 25px;
+  height: 30px;
+  min-height: 30px;
   box-sizing: border-box;
   padding: 0 10px;
   border-radius: 5px;
@@ -792,51 +743,16 @@ body.dark aside .current.selected {
   }
 }
 */
-@media only screen and (max-width: 600px) {
-  aside {
-    width: unset;
-    flex-shrink: unset;
-  }
-  aside {
-    padding: 0 10px;
-  }
-  aside .tab.submenu {
-    padding: 10px;
-  }
-  aside .tab i {
-    width: 100%;
-  }
-  aside .tab .caption {
-    display: none;
-  }
-  aside .tab {
-    margin: 0;
-    padding: 10px;
-    border-left: none;
-  }
-  aside .btn-tab {
-    flex-direction: column;
-    padding: 10px 0;
-  }
-  aside .btn-tab .btn {
-    display: flex;
-    justify-content: flex-start;
-  }
-  aside .btn-tab .btn .caption {
-    display: block; 
-  }
+@media only screen and (max-width: 760px) {
   .home-search-form {
     flex-wrap: wrap;
     gap: 8px;
   }
+  .home-search-form .home-apps-sort {
+    margin-left: 0;
+  }
   header .flexible {
     min-width: unset;
-  }
-}
-@media only screen and (max-width: 900px) {
-  body.is-home .main-sidebar,
-  main > .container:has(.home-search-form) + .main-sidebar {
-    display: none !important;
   }
 }
 @media only screen and (max-width: 480px) {
@@ -955,50 +871,25 @@ body.dark aside .current.selected {
 <div id='terminal' class='hidden'></div>
 <div class='container'>
 <% if (ishome) { %>
+  <% const currentHomeSort = (typeof home_sort === "string" ? home_sort : "most_used") %>
   <form class='search home-search-form'>
-    <div class="home-mode-switch home-search-mode-switch" role="tablist" aria-label="Home modes">
-      <a class="mode-link selected" href="/home" aria-current="page">
-        <i class="fa-solid fa-box"></i>
-        <span>Apps</span>
-      </a>
-      <a class="mode-link" href="/home?mode=terminals">
-        <i class="fa-solid fa-robot"></i>
-        <span>Agents</span>
-      </a>
-    </div>
     <% if (display.includes("form")) { %>
       <input type='search' class="flexible" placeholder='Search apps'>
     <% } else { %>
     <% } %>
+    <div class="home-apps-sort">
+      <i class="fa-solid fa-sort home-apps-sort-icon" aria-hidden="true"></i>
+      <label for="home-apps-sort-select">Sort</label>
+      <select id="home-apps-sort-select" aria-label="Sort apps">
+        <option value="most_used" <%= currentHomeSort === "most_used" ? "selected" : "" %>>Most used</option>
+        <option value="last_opened" <%= currentHomeSort === "last_opened" ? "selected" : "" %>>Last opened</option>
+        <option value="az" <%= currentHomeSort === "az" ? "selected" : "" %>>A-Z</option>
+      </select>
+      <i class="fa-solid fa-chevron-down home-apps-sort-caret" aria-hidden="true"></i>
+    </div>
   </form>
 <% } %>
 <% if (ishome) { %>
-  <% const currentHomeSort = (typeof home_sort === "string" ? home_sort : "most_used") %>
-  <section class="home-apps-header" aria-label="Apps intro">
-    <div class="home-apps-header-actions">
-      <div class="home-apps-header-main-actions">
-        <button type="button" class="btn home-apps-create-btn" id="create-launcher-button">
-          <i class="fa-solid fa-plus"></i>
-          <span>Create an app</span>
-        </button>
-        <%- include('partials/peer_access_points', {
-          peer_access_points: (typeof peer_access_points !== "undefined" ? peer_access_points : null),
-          peer_url: (typeof peer_url !== "undefined" ? peer_url : null),
-          peer_qr: (typeof peer_qr !== "undefined" ? peer_qr : null),
-        }) %>
-      </div>
-      <div class="home-apps-sort">
-        <i class="fa-solid fa-sort home-apps-sort-icon" aria-hidden="true"></i>
-        <label for="home-apps-sort-select">Sort</label>
-        <select id="home-apps-sort-select" aria-label="Sort apps">
-          <option value="most_used" <%= currentHomeSort === "most_used" ? "selected" : "" %>>Most used</option>
-          <option value="last_opened" <%= currentHomeSort === "last_opened" ? "selected" : "" %>>Last opened</option>
-          <option value="az" <%= currentHomeSort === "az" ? "selected" : "" %>>A-Z</option>
-        </select>
-        <i class="fa-solid fa-chevron-down home-apps-sort-caret" aria-hidden="true"></i>
-      </div>
-    </div>
-  </section>
   <% if (running.length > 0) { %>
     <div class='running-apps'>
       <% running.forEach((item, index) => { %>
@@ -1023,6 +914,8 @@ body.dark aside .current.selected {
               <div class='uri'><%=item.filepath%></div>
               <div class='description'><%=item.description%></div>
               <div class='menu-btns'>
+                <% const runningTerminalOnlineCount = Number(item.terminal_online_count || 0) %>
+                <% const runningTerminalLabel = runningTerminalOnlineCount > 0 ? `${runningTerminalOnlineCount} terminal${runningTerminalOnlineCount === 1 ? "" : "s"} online` : "Terminals" %>
                 <button
                   class='btn toggle-star <%=item.starred ? "is-starred" : ""%>'
                   data-app-id="<%=item.uri%>"
@@ -1032,20 +925,12 @@ body.dark aside .current.selected {
                   <i class="fa-<%=item.starred ? "solid" : "regular"%> fa-star"></i>
                   <span><%=item.starred ? "Starred" : "Star"%></span>
                 </button>
-                <button class='btn browse' data-src="<%=item.dev_url%>">
-                  <i class="fa-solid fa-code"></i> Dev
-                </button>
-                <button class='btn browse' data-src="<%=item.view_url%>">
-                  <i class="fa-regular fa-eye"></i> View
-                </button>
                 <button class='btn open-menu' type='button' popovertarget="context-menu-running-<%=index%>" popovertargetaction="toggle" aria-haspopup="menu">
                   <i class="fa-solid fa-bars"></i><span> Menu</span>
                 </button>
                 <div id='context-menu-running-<%=index%>' class='context-menu' popover>
                   <div class='context-menu-wrapper'>
-                    <button class='btn' data-filepath="<%=item.filepath%>">
-                      <i class="fa-solid fa-folder-open"></i> Open</button>
-                    </button>
+                    <div class='context-menu-section-title'>File</div>
                     <button class='btn copy-menu'>
                       <i class='fa-solid fa-copy'></i> Copy
                     </button>
@@ -1058,8 +943,27 @@ body.dark aside .current.selected {
                     <button class='btn del' data-src="<%=item.url%>" data-disable="To delete the folder, the app should not be running.">
                       <i class="fa-solid fa-trash-can"></i> Delete
                     </button>
+                    <div class='context-menu-divider'></div>
+                    <div class='context-menu-section-title'>Open</div>
+                    <button class='btn browse' data-src="<%=item.view_url%>">
+                      <i class="fa-regular fa-eye"></i> Open without launching
+                    </button>
+                    <button class='btn browse' data-src="<%=item.dev_url%>">
+                      <i class="fa-solid fa-code"></i> Dev mode
+                    </button>
+                    <button class='btn browse' data-src="<%=item.files_url%>">
+                      <i class="fa-solid fa-file-lines"></i> Files mode
+                    </button>
+                    <button class='btn' data-filepath="<%=item.filepath%>">
+                      <i class="fa-solid fa-folder-open"></i> Open in file explorer
+                    </button>
                   </div>
                 </div>
+                <button class='btn browse terminals-link <%=runningTerminalOnlineCount > 0 ? "is-online" : ""%>' data-src="<%=item.dev_url%>" title="<%=runningTerminalOnlineCount > 0 ? runningTerminalLabel : 'Open terminals'%>">
+                  <i class="fa-solid fa-terminal"></i>
+                  <span><%=runningTerminalLabel%></span>
+                  <i class="fa-solid <%=runningTerminalOnlineCount > 0 ? "fa-circle-notch fa-spin" : "fa-chevron-right"%> terminals-link-indicator" aria-hidden="true"></i>
+                </button>
                 <% if (item.running_scripts) { %>
                   <% item.running_scripts.forEach((s) => { %>
                     <% if (s.id) { %>
@@ -1115,6 +1019,8 @@ body.dark aside .current.selected {
               <div class='uri'><%=item.filepath%></div>
               <div class='description'><%=item.description%></div>
               <div class='menu-btns'>
+                <% const notRunningTerminalOnlineCount = Number(item.terminal_online_count || 0) %>
+                <% const notRunningTerminalLabel = notRunningTerminalOnlineCount > 0 ? `${notRunningTerminalOnlineCount} terminal${notRunningTerminalOnlineCount === 1 ? "" : "s"} online` : "Terminals" %>
                 <button
                   class='btn toggle-star <%=item.starred ? "is-starred" : ""%>'
                   data-app-id="<%=item.uri%>"
@@ -1124,20 +1030,12 @@ body.dark aside .current.selected {
                   <i class="fa-<%=item.starred ? "solid" : "regular"%> fa-star"></i>
                   <span><%=item.starred ? "Starred" : "Star"%></span>
                 </button>
-                <button class='btn browse' data-src="<%=item.dev_url%>">
-                  <i class="fa-solid fa-code"></i> Dev
-                </button>
-                <button class='btn browse' data-src="<%=item.view_url%>">
-                  <i class="fa-regular fa-eye"></i> View
-                </button>
                 <button class='btn open-menu' type='button' popovertarget="context-menu-not-running-<%=index%>" popovertargetaction="toggle" aria-haspopup="menu">
                   <i class="fa-solid fa-bars"></i><span> Menu</span>
                 </button>
                 <div id='context-menu-not-running-<%=index%>' class='context-menu' popover>
                   <div class='context-menu-wrapper'>
-                    <button class='btn' data-filepath="<%=item.filepath%>">
-                      <i class="fa-solid fa-folder-open"></i> Open</button>
-                    </button>
+                    <div class='context-menu-section-title'>File</div>
                     <button class='btn copy-menu'>
                       <i class='fa-solid fa-copy'></i> Copy
                     </button>
@@ -1150,8 +1048,27 @@ body.dark aside .current.selected {
                     <button class='btn del' data-src="<%=item.url%>">
                       <i class="fa-solid fa-trash-can"></i> Delete
                     </button>
+                    <div class='context-menu-divider'></div>
+                    <div class='context-menu-section-title'>Open</div>
+                    <button class='btn browse' data-src="<%=item.view_url%>">
+                      <i class="fa-regular fa-eye"></i> Open without launching
+                    </button>
+                    <button class='btn browse' data-src="<%=item.dev_url%>">
+                      <i class="fa-solid fa-code"></i> Dev mode
+                    </button>
+                    <button class='btn browse' data-src="<%=item.files_url%>">
+                      <i class="fa-solid fa-file-lines"></i> Files mode
+                    </button>
+                    <button class='btn' data-filepath="<%=item.filepath%>">
+                      <i class="fa-solid fa-folder-open"></i> Open in file explorer
+                    </button>
                   </div>
                 </div>
+                <button class='btn browse terminals-link <%=notRunningTerminalOnlineCount > 0 ? "is-online" : ""%>' data-src="<%=item.dev_url%>" title="<%=notRunningTerminalOnlineCount > 0 ? notRunningTerminalLabel : 'Open terminals'%>">
+                  <i class="fa-solid fa-terminal"></i>
+                  <span><%=notRunningTerminalLabel%></span>
+                  <i class="fa-solid <%=notRunningTerminalOnlineCount > 0 ? "fa-circle-notch fa-spin" : "fa-chevron-right"%> terminals-link-indicator" aria-hidden="true"></i>
+                </button>
               </div>
               <div class='fiexible'></div>
               <% if (item.shortcuts && item.shortcuts.length > 0) { %>
@@ -1176,7 +1093,7 @@ body.dark aside .current.selected {
       <div>Get started by installing or creating some pinokio scripts.</div>
       <a href="/home?mode=explore" class='btn'><i class="fa-solid fa-globe"></i> Explore</a>
       <span>&nbsp;or&nbsp;</span>
-      <button type='button' class='btn' onclick="(function(btn){ if(btn){ btn.click(); } })(document.getElementById('create-launcher-button'))"><i class="fa-solid fa-wand-magic-sparkles"></i> Create</button>
+      <button type='button' class='btn' data-universal-launcher-open="create_app"><i class="fa-solid fa-wand-magic-sparkles"></i> Create</button>
     </div>
   <% } %>
 <% } else { %>
@@ -1200,7 +1117,7 @@ body.dark aside .current.selected {
 </div>
 <% } %>
 </div>
-<%- include('partials/main_sidebar', { selected: 'home', showPeerAccess: !ishome }) %>
+<%- include('partials/main_sidebar', { selected: 'home' }) %>
 </main>
 <script>
 let paths = location.pathname.split("/").filter(x=>x)
@@ -1211,66 +1128,6 @@ window.PinokioHomeGuardNavigate = null;
 if (document.querySelector(".home-search-form")) {
   document.body.classList.add("is-home");
 }
-const escapeModalHtml = (raw = "") => {
-  return String(raw)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll("\"", "&quot;")
-    .replaceAll("'", "&#39;")
-}
-const bindHeaderPeerAccessPopups = (root = document) => {
-  const links = root.querySelectorAll(".home-apps-header-actions .qr > a")
-  links.forEach((link) => {
-    if (!link || link.dataset.peerAccessBound === "1") {
-      return
-    }
-    link.dataset.peerAccessBound = "1"
-    link.setAttribute("role", "button")
-    if (!link.querySelector(".peer-access-trigger-icon")) {
-      const icon = document.createElement("i")
-      icon.className = "fa-solid fa-qrcode peer-access-trigger-icon"
-      icon.setAttribute("aria-hidden", "true")
-      link.insertBefore(icon, link.firstChild)
-    }
-    link.addEventListener("click", async (event) => {
-      event.preventDefault()
-      event.stopPropagation()
-      const qrImg = link.querySelector("img")
-      const captions = link.querySelectorAll(".caption")
-      const label = captions.length > 0 ? String(captions[0].textContent || "").trim() : "Scan to open"
-      const rawUrl = captions.length > 1
-        ? String(captions[captions.length - 1].textContent || "").trim()
-        : String(link.getAttribute("href") || "").trim()
-      const url = rawUrl || String(link.getAttribute("href") || "").trim()
-      const qrSrc = (qrImg && qrImg.getAttribute("src"))
-        ? qrImg.getAttribute("src")
-        : (url ? `/qr?data=${encodeURIComponent(url)}&s=6&m=0` : "")
-      if (!qrSrc) {
-        if (url) {
-          window.open(url, "_blank", "noopener")
-        }
-        return
-      }
-      if (typeof Swal === "undefined" || !Swal || typeof Swal.fire !== "function") {
-        if (url) {
-          window.open(url, "_blank", "noopener")
-        }
-        return
-      }
-      await Swal.fire({
-        title: label || "Scan to open",
-        customClass: {
-          popup: "min-popup",
-          title: "min-title"
-        },
-        showConfirmButton: false,
-        html: `<div class='min-modal'><div><img src="${escapeModalHtml(qrSrc)}" style="width:256px; height:256px; image-rendering: pixelated;"></div>${url ? `<a href="${escapeModalHtml(url)}" target="_blank" rel="noopener">${escapeModalHtml(url)}</a>` : ""}</div>`
-      })
-    })
-  })
-}
-bindHeaderPeerAccessPopups()
 <% if (ishome) { %>
 document.addEventListener("DOMContentLoaded", () => {
   // Run wait_ready for every /home navigation so we only leave when requirements are satisfied
@@ -1773,6 +1630,24 @@ const getMenuDimensions = (menu) => {
     height: height || 0
   }
 }
+const closeContextMenuForNode = (node) => {
+  const contextMenu = node && typeof node.closest === 'function'
+    ? node.closest('.context-menu')
+    : null
+  if (!contextMenu) {
+    return
+  }
+  const hasNativePopover = supportsNativePopovers && typeof contextMenu.hidePopover === 'function'
+  if (hasNativePopover) {
+    if (contextMenu.matches(':popover-open')) {
+      contextMenu.hidePopover()
+    }
+  } else {
+    contextMenu.style.display = 'none'
+    contextMenu.dataset.open = 'false'
+  }
+}
+window.PinokioHomeCloseContextMenu = closeContextMenuForNode
 const parseLineStarSortMeta = (line) => {
   if (!line) {
     return {
@@ -1871,6 +1746,53 @@ if (homeSortSelect) {
       dropdownParent: sortDropdownParent || undefined
     })
   }
+  const sortContainer = homeSortSelect.closest(".home-apps-sort")
+  if (sortContainer && sortContainer.dataset.clickBound !== "true") {
+    sortContainer.dataset.clickBound = "true"
+    sortContainer.addEventListener("click", (event) => {
+      if (!(event.target instanceof Element) || event.target.closest(".ts-dropdown")) {
+        return
+      }
+      const sortControl = homeSortSelect.tomselect
+      if (sortControl && !event.target.closest(".ts-control")) {
+        sortControl.focus()
+        sortControl.open()
+        return
+      }
+      if (!event.target.closest("select")) {
+        homeSortSelect.focus()
+        homeSortSelect.click()
+      }
+    })
+  }
+}
+let homeStarToast = null
+const showHomeStarToast = () => {
+  if (typeof n === "undefined" || !n || typeof n.Noty !== "function") {
+    return
+  }
+  if (homeStarToast && typeof homeStarToast.close === "function") {
+    homeStarToast.close()
+  }
+  homeStarToast = n.Noty({
+    type: "notification",
+    className: "home-star-toast",
+    timeout: 5200,
+    progressBar: false,
+    closeWith: ["click"],
+    silent: true,
+    text: `
+      <div class="home-star-toast__row">
+        <div class="home-star-toast__icon">
+          <i class="fa-solid fa-star"></i>
+        </div>
+        <div class="home-star-toast__content">
+          <div class="home-star-toast__title">Starred apps get priority</div>
+          <div class="home-star-toast__text">AI agents rank starred apps higher when searching for tools to use.</div>
+        </div>
+      </div>
+    `
+  })
 }
 document.addEventListener("click", async (e) => {
   if (e.target.classList.contains("toggle-star")) {
@@ -1924,6 +1846,9 @@ document.addEventListener("click", async (e) => {
         line.setAttribute("data-last-launch-at", payload.preference.last_launch_at || "")
       }
       reorderHomeSectionsByPreference()
+      if (payload.preference.starred) {
+        showHomeStarToast()
+      }
     } catch (error) {
       alert(error && error.message ? error.message : "Failed to update app star")
     } finally {
@@ -2075,6 +2000,7 @@ document.addEventListener("click", async (e) => {
   if (target) {
     e.preventDefault()
     e.stopPropagation()
+    closeContextMenuForNode(target)
 
     let disable_message = target.getAttribute('data-disable')
     if (disable_message && disable_message.length > 0) {
@@ -2111,6 +2037,7 @@ document.addEventListener("click", async (e) => {
   if (target) {
     e.preventDefault()
     e.stopPropagation()
+    closeContextMenuForNode(target)
     let line = target.closest(".line")
     let title = line.getAttribute("data-title")
     let icon = line.getAttribute("data-icon")
@@ -2140,6 +2067,7 @@ document.addEventListener("click", async (e) => {
   if (target) {
     e.preventDefault()
     e.stopPropagation()
+    closeContextMenuForNode(target)
     let line = target.closest(".line")
     let title = line.getAttribute("data-title")
     let icon = line.getAttribute("data-icon")
@@ -2171,6 +2099,7 @@ document.addEventListener("click", async (e) => {
   if (target) {
     e.preventDefault()
     e.stopPropagation()
+    closeContextMenuForNode(target)
     let src = target.getAttribute("data-src")
     if (window.PinokioHomeGuardNavigate) {
       window.PinokioHomeGuardNavigate(src)
@@ -2190,6 +2119,7 @@ document.addEventListener("click", async (e) => {
   if (target) {
     e.preventDefault()
     e.stopPropagation()
+    closeContextMenuForNode(target)
 
     let disable_message = target.getAttribute('data-disable')
     if (disable_message && disable_message.length > 0) {

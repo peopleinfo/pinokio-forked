@@ -17,6 +17,23 @@ class Shells {
     this.bracketedPasteDetections = new Map()
 
   }
+  resolveShellExecutable(shellName) {
+    if (typeof shellName !== "string") {
+      return shellName
+    }
+    const trimmed = shellName.trim()
+    if (!trimmed || path.isAbsolute(trimmed)) {
+      return trimmed
+    }
+    if (trimmed.includes("/") || trimmed.includes("\\")) {
+      return trimmed
+    }
+    const resolved = this.kernel.which(trimmed)
+    if (resolved) {
+      return resolved
+    }
+    return trimmed
+  }
   /*
   params := {
     "id": <shell id>,
@@ -182,6 +199,24 @@ class Shells {
       }
     }
     const parentMeta = params.$parent || null
+    const getParentRunningKey = () => {
+      if (!parentMeta) {
+        return null
+      }
+      if (parentMeta.id) {
+        return parentMeta.id
+      }
+      if (!parentMeta.path || typeof parentMeta.path !== "string") {
+        return null
+      }
+      const ext = path.extname(parentMeta.path).toLowerCase()
+      const looksLikeScript = ext === ".js" || ext === ".json"
+      const hasRequestMetadata = !!(parentMeta.uri || parentMeta.body || parentMeta.action)
+      if (!looksLikeScript || !hasRequestMetadata) {
+        return null
+      }
+      return parentMeta.path
+    }
     const queueTriggerAction = async (action, eventMatch) => {
       if (!action) {
         return
@@ -190,7 +225,7 @@ class Shells {
         throw new Error(`unable to trigger "${action}" without a parent script`)
       }
 
-      const runningKey = parentMeta.id || parentMeta.path
+      const runningKey = getParentRunningKey()
       if (runningKey && !this.kernel.api.running[runningKey]) {
         return
       }
@@ -237,6 +272,20 @@ class Shells {
       )
     }
 
+    if (params.shell) {
+      // Resolve bare command names before probing/launching so Windows can find bundled bash reliably.
+      params.shell = this.resolveShellExecutable(params.shell)
+    }
+    const isParentRequestActive = () => {
+      const runningKey = getParentRunningKey()
+      if (!runningKey) {
+        return true
+      }
+      return !!this.kernel.api.running[runningKey]
+    }
+    if (!isParentRequestActive()) {
+      return ""
+    }
     const plannedShell = params.shell || (this.kernel.platform === 'win32' ? 'cmd.exe' : 'bash')
     await this.ensureBracketedPasteSupport(plannedShell)
     let sh = new Shell(this.kernel)
@@ -251,6 +300,80 @@ class Shells {
     const handlerLastMatchEnd = new Map()
     let liveEventBuffer = ""
     let liveEventOffset = 0
+    let liveEventAnsiCarry = ""
+    let liveEventHandlersClosed = false
+
+    // Keep cross-chunk event matching, but normalize terminal styling away first.
+    // Preserve line boundaries so later shell banners cannot fuse onto prior matches.
+    const findLiveEventCarryIndex = (value = "") => {
+      if (!value) {
+        return value.length
+      }
+      const escIndex = value.lastIndexOf("\u001b")
+      const csiIndex = value.lastIndexOf("\u009b")
+      const start = Math.max(escIndex, csiIndex)
+      if (start === -1) {
+        return value.length
+      }
+      if (value[start] === "\u009b") {
+        for (let i = start + 1; i < value.length; i++) {
+          const code = value.charCodeAt(i)
+          if (code >= 0x40 && code <= 0x7e) {
+            return value.length
+          }
+        }
+        return start
+      }
+      if (start === value.length - 1) {
+        return start
+      }
+      const marker = value[start + 1]
+      if (marker === "[") {
+        for (let i = start + 2; i < value.length; i++) {
+          const code = value.charCodeAt(i)
+          if (code >= 0x40 && code <= 0x7e) {
+            return value.length
+          }
+        }
+        return start
+      }
+      if (marker === "]" || "PX^_".includes(marker)) {
+        for (let i = start + 2; i < value.length; i++) {
+          const ch = value[i]
+          if (ch === "\u0007") {
+            return value.length
+          }
+          if (ch === "\u001b") {
+            if (i + 1 >= value.length) {
+              return start
+            }
+            if (value[i + 1] === "\\") {
+              return value.length
+            }
+          }
+        }
+        return start
+      }
+      return value.length
+    }
+    const normalizeLiveEventChunk = (chunk) => {
+      if (typeof chunk !== "string" || chunk.length === 0) {
+        return ""
+      }
+      let combined = liveEventAnsiCarry + chunk
+      liveEventAnsiCarry = ""
+      const carryIndex = findLiveEventCarryIndex(combined)
+      if (carryIndex < combined.length) {
+        liveEventAnsiCarry = combined.slice(carryIndex)
+        combined = combined.slice(0, carryIndex)
+      }
+      if (combined.length === 0) {
+        return ""
+      }
+      return sh.stripAnsi(combined)
+        .replaceAll(/\r\n/g, "\n")
+        .replaceAll(/\r/g, "\n")
+    }
 
     // if error doesn't exist, add default "error:" event
     if (!params.on) {
@@ -271,6 +394,10 @@ class Shells {
       break: false
     }]
     params.on = params.on.concat(defaultHandlers)
+
+    if (!isParentRequestActive()) {
+      return ""
+    }
 
     let response = await sh.start(params, async (stream) => {
       /*
@@ -296,15 +423,13 @@ class Shells {
         }
       */
       try {
-        const rawChunk = typeof stream.raw === "string"
-          ? stream.raw.replaceAll(/[\r\n]/g, "")
-          : ""
-        if (rawChunk.length > 0) {
-          liveEventBuffer = (liveEventBuffer + rawChunk).slice(-300)
-          liveEventOffset += rawChunk.length
+        const normalizedChunk = normalizeLiveEventChunk(stream.raw)
+        if (normalizedChunk.length > 0) {
+          liveEventBuffer = (liveEventBuffer + normalizedChunk).slice(-300)
+          liveEventOffset += normalizedChunk.length
         }
         const liveEventBufferStart = Math.max(0, liveEventOffset - liveEventBuffer.length)
-        if (params.on && Array.isArray(params.on)) {
+        if (!liveEventHandlersClosed && params.on && Array.isArray(params.on)) {
           for(let i=0; i<params.on.length; i++) {
             let handler = params.on[i]
             if (handler.once && onceHandlers.has(i)) {
@@ -352,11 +477,18 @@ class Shells {
                     }
                     const lastMatch = rendered_event[rendered_event.length - 1]
                     handlerLastMatchEnd.set(i, liveEventBufferStart + lastMatch.index + lastMatch[0].length)
-                    stream.matches = rendered_event
-                    m = rendered_event[0]
-                    matched_index = i
-                    if (typeof handler.trigger === "string" && handler.trigger.trim()) {
-                      const triggerAction = handler.trigger.trim()
+                    const triggerAction = typeof handler.trigger === "string" ? handler.trigger.trim() : ""
+                    const shouldCaptureEvent =
+                      handler.break !== false
+                      || handler.done
+                      || handler.kill
+                      || !!triggerAction
+                    if (shouldCaptureEvent) {
+                      stream.matches = rendered_event
+                      m = rendered_event[0]
+                      matched_index = i
+                    }
+                    if (triggerAction) {
                       queueTriggerAction(triggerAction, rendered_event[0]).catch((e) => {
                         console.log("Trigger error", e)
                         if (ondata) {
@@ -366,9 +498,13 @@ class Shells {
                     }
                     if (handler.kill) {
                       sh.kill()
+                      liveEventHandlersClosed = true
+                      break
                     }
                     if (handler.done) {
                       sh.continue()
+                      liveEventHandlersClosed = true
+                      break
                     }
                   }
                 }

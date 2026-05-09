@@ -92,9 +92,7 @@
     }
     try {
       const params = new URLSearchParams(window.location.search || '');
-      return isTruthyQueryParam(params.get('ask_ai'))
-        || isTruthyQueryParam(params.get('pinokio_ask_ai'))
-        || isTruthyQueryParam(params.get('minimal_runner'));
+      return isTruthyQueryParam(params.get('ask_ai'));
     } catch (_) {
       return false;
     }
@@ -122,30 +120,35 @@
         event.preventDefault();
         this.closeModal();
       };
+      this.prefersModalInput = this.shouldPreferModalInput();
       const stored = this.loadDirectTypingPreference();
-      if (stored === null) {
-        this.directTypingEnabled = !this.shouldPreferModalInput();
+      if (!this.prefersModalInput) {
+        this.directTypingEnabled = true;
+      } else if (stored === null) {
+        this.directTypingEnabled = false;
       } else {
         this.directTypingEnabled = stored;
       }
     }
 
     shouldPreferModalInput() {
-      if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
-        try {
-          if (window.matchMedia('(pointer: coarse)').matches) {
-            return true;
-          }
-        } catch (_) {}
-        try {
-          if (window.matchMedia('(max-width: 768px)').matches) {
-            return true;
-          }
-        } catch (_) {}
-      }
       if (typeof navigator !== 'undefined') {
+        try {
+          if (navigator.userAgentData && typeof navigator.userAgentData.mobile === 'boolean') {
+            if (navigator.userAgentData.mobile) {
+              return true;
+            }
+          }
+        } catch (_) {}
         const ua = navigator.userAgent || '';
         if (/Mobi|Android|iPhone|iPad|Tablet/i.test(ua)) {
+          return true;
+        }
+        const platform = navigator.platform || '';
+        const maxTouchPoints = typeof navigator.maxTouchPoints === 'number'
+          ? navigator.maxTouchPoints
+          : 0;
+        if (/Mac/i.test(platform) && maxTouchPoints > 1) {
           return true;
         }
       }
@@ -296,7 +299,7 @@
     }
 
     setDirectTypingEnabled(enabled) {
-      const next = Boolean(enabled);
+      const next = this.prefersModalInput ? Boolean(enabled) : true;
       if (next === this.directTypingEnabled) {
         return;
       }
@@ -770,6 +773,7 @@
         if ('fontFamily' in parsed && typeof parsed.fontFamily !== 'string') {
           delete parsed.fontFamily;
         }
+        delete parsed.lineHeight;
         if ('theme' in parsed) {
           parsed.theme = this.sanitizeTheme(parsed.theme);
           if (!parsed.theme || !Object.keys(parsed.theme).length) {
@@ -816,14 +820,39 @@
     }
 
     safeGetOption(term, option) {
-      if (!term || typeof term.getOption !== 'function') {
+      if (!term) {
         return undefined;
       }
-      try {
-        return term.getOption(option);
-      } catch (_) {
-        return undefined;
+      if (term.options && Object.prototype.hasOwnProperty.call(term.options, option)) {
+        try {
+          return term.options[option];
+        } catch (_) {}
       }
+      if (typeof term.getOption === 'function') {
+        try {
+          return term.getOption(option);
+        } catch (_) {}
+      }
+      return undefined;
+    }
+
+    applyOption(term, key, value) {
+      if (!term) {
+        return false;
+      }
+      if (term.options) {
+        try {
+          term.options[key] = value;
+          return true;
+        } catch (_) {}
+      }
+      if (typeof term.setOption === 'function') {
+        try {
+          term.setOption(key, value);
+          return true;
+        } catch (_) {}
+      }
+      return false;
     }
 
     register(term, meta) {
@@ -933,33 +962,23 @@
     }
 
     applyNumericOption(term, key, value) {
-      if (typeof term.setOption === 'function') {
-        try {
-          term.setOption(key, value);
-        } catch (_) {}
-      }
+      this.applyOption(term, key, value);
       if (term.element && term.element.style) {
-        const cssValue = `${value}px`;
+        term.element.style.removeProperty(`--${key}`);
         if (key === 'fontSize') {
-          term.element.style.setProperty('--font-size', cssValue);
-          term.element.style.fontSize = cssValue;
+          term.element.style.fontSize = '';
         } else {
-          term.element.style.setProperty(`--${key}`, cssValue);
-          term.element.style[key] = cssValue;
+          term.element.style[key] = '';
         }
       }
     }
 
     applyStringOption(term, key, value) {
-      if (typeof term.setOption === 'function') {
-        try {
-          term.setOption(key, value);
-        } catch (_) {}
-      }
+      this.applyOption(term, key, value);
       if (term.element && term.element.style) {
-        term.element.style.setProperty(`--${key}`, value);
+        term.element.style.removeProperty(`--${key}`);
         if (key === 'fontFamily') {
-          term.element.style.fontFamily = value;
+          term.element.style.fontFamily = '';
         }
       }
     }
@@ -980,6 +999,7 @@
       }
       this.savePreferences();
       this.applyAll();
+      this.requestForceResize({ source: 'terminal-font-family' });
       this.syncMenus();
     }
 
@@ -996,16 +1016,23 @@
       }
       this.savePreferences();
       this.applyAll();
+      this.requestForceResize({ source: 'terminal-font-size' });
       this.syncMenus();
     }
 
     resetPreferences() {
+      const hadGeometryPreferences = Boolean(
+        typeof this.preferences.fontFamily === 'string' && this.preferences.fontFamily.trim()
+      ) || isFiniteNumber(this.preferences.fontSize);
       delete this.preferences.fontFamily;
       delete this.preferences.fontSize;
       delete this.preferences.theme;
       this.currentFontFamily = '';
       this.savePreferences();
       this.applyAll();
+      if (hadGeometryPreferences) {
+        this.requestForceResize({ source: 'terminal-reset' });
+      }
       this.syncMenus();
     }
 
@@ -1059,39 +1086,7 @@
     }
 
     updateGlobalStylesFromPreferences() {
-      if (typeof document === 'undefined') {
-        return;
-      }
-      const family = typeof this.preferences.fontFamily === 'string' ? this.preferences.fontFamily.trim() : '';
-      const size = isFiniteNumber(this.preferences.fontSize) ? this.preferences.fontSize : null;
-      if (!family && !size) {
-        this.removeStyleElement();
-        return;
-      }
-      const style = this.ensureStyleElement();
-      if (!style) {
-        return;
-      }
-      const selectors = [
-        '.xterm',
-        '.xterm .xterm-rows',
-        '.xterm .xterm-rows span',
-        '.xterm .xterm-text-layer',
-        '.xterm .xterm-text-layer canvas',
-        '.xterm .xterm-cursor-layer',
-        '.xterm .xterm-char-measure-element'
-      ];
-      const declarations = [];
-      if (family) {
-        declarations.push(`font-family: ${family} !important`);
-      }
-      if (size) {
-        declarations.push(`font-size: ${size}px !important`);
-      }
-      const nextCss = `${selectors.join(', ')} { ${declarations.join('; ')}; }`;
-      if (style.textContent !== nextCss) {
-        style.textContent = nextCss;
-      }
+      this.removeStyleElement();
     }
 
     sanitizeTheme(raw, allowUnknown) {
@@ -1190,16 +1185,7 @@
         return;
       }
       const nextTheme = Object.assign({}, theme);
-      let applied = false;
-      if (typeof term.setOption === 'function') {
-        try {
-          term.setOption('theme', nextTheme);
-          applied = true;
-        } catch (_) {}
-      } else if (term.options) {
-        term.options.theme = nextTheme;
-        applied = true;
-      }
+      const applied = this.applyOption(term, 'theme', nextTheme);
 
       const element = term.element;
       if (element && element.style) {
@@ -1360,6 +1346,23 @@
       });
     }
 
+    applyMobileRunnerLayout(runner) {
+      if (!runner || !this.mobileInput || !this.mobileInput.prefersModalInput) {
+        return;
+      }
+      const nodes = runner.querySelectorAll('#open-fs');
+      if (!nodes || !nodes.length) {
+        return;
+      }
+      nodes.forEach((node) => {
+        if (!node) {
+          return;
+        }
+        node.hidden = true;
+        node.setAttribute('aria-hidden', 'true');
+      });
+    }
+
     initRunnerMenus() {
       if (typeof document === 'undefined') {
         return;
@@ -1385,12 +1388,13 @@
         if (menu) {
           this.menus.add(menu);
         }
-        if (this.mobileInput && !this.minimalRunnerMode) {
+        if (this.mobileInput && this.mobileInput.prefersModalInput && !this.minimalRunnerMode) {
           this.mobileInput.attachKeyboardButton(runner, utilities);
         }
         if (!this.minimalRunnerMode) {
           this.attachForceResizeButton(runner, utilities);
         }
+        this.applyMobileRunnerLayout(runner);
         this.applyMinimalRunnerLayout(runner);
       });
     }
@@ -1738,6 +1742,7 @@
         positionMenu();
       };
 
+      sizeInput.addEventListener('input', handleSizeChange);
       sizeInput.addEventListener('change', handleSizeChange);
       sizeInput.addEventListener('blur', handleSizeChange);
 

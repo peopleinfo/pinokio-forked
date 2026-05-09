@@ -21,12 +21,13 @@
 <script src="/terminal-settings.js"></script>
 <script src="/pinokio-touch.js"></script>
 <script src="/common.js"></script>
+<script src="/run-task-save.js"></script>
 <script src="/he.js"></script>
 <script src="/opener.js"></script>
 <script src="/loading.js"></script>
-<!--
+<% if (locals.full_navbar) { %>
 <script src="/nav.js"></script>
--->
+<% } %>
 <script src="/autoexpand.js"></script>
 <script src="/modalinput.js"></script>
 <script src="/htmlmodal.js"></script>
@@ -103,9 +104,178 @@ td.key {
   padding: 5px 10px;
   border-radius: 4px;
 }
-header {
+header.navheader2 {
   position: relative;
   padding: 10px 0;
+}
+.navheader2 .runner .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 22px;
+  padding: 0 8px !important;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(60, 67, 92, 0.96), rgba(49, 55, 78, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.96);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+.navheader2 .runner .btn:hover {
+  border-color: rgba(111, 143, 255, 0.32);
+  background: linear-gradient(180deg, rgba(67, 74, 101, 0.98), rgba(55, 62, 86, 0.98));
+}
+.navheader2 .runner .btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(66, 113, 174, 0.2), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.navheader2 .runner .btn:active {
+  transform: translateY(1px);
+}
+.navheader2 .runner .run > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+body.dark .navheader2 .runner .btn {
+  border-color: rgba(255,255,255,0.12);
+  background: linear-gradient(180deg, rgba(255,255,255,0.11), rgba(255,255,255,0.07));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+}
+body.dark .navheader2 .runner .btn:hover {
+  border-color: rgba(111, 143, 255, 0.28);
+  background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.1));
+}
+.protection-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.protection-toggle.is-saving {
+  opacity: 0.7;
+  cursor: wait;
+}
+.protection-toggle:focus-visible {
+  outline: none;
+}
+.protection-toggle-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.protection-toggle-icon-wrap {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(126, 155, 255, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(126, 155, 255, 0.14);
+  flex-shrink: 0;
+}
+.protection-toggle-icon {
+  color: #89a6ff;
+  font-size: 10px;
+}
+.protection-toggle-label {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.protection-toggle-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.84);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.protection-toggle-switch {
+  position: relative;
+  width: 24px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.1);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
+  flex-shrink: 0;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.protection-toggle-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.94);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.22);
+  transition: transform 0.2s ease;
+}
+.protection-toggle[aria-checked="true"] .protection-toggle-switch::after {
+  transform: translateX(10px);
+}
+.protection-toggle[aria-checked="false"] .protection-toggle-switch::after {
+  transform: translateX(0);
+}
+.protection-toggle[aria-checked="true"] .protection-toggle-state {
+  background: rgba(111, 143, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(111, 143, 255, 0.18);
+  color: #e2eaff;
+}
+.protection-toggle[aria-checked="true"] .protection-toggle-switch {
+  background: rgba(111, 143, 255, 0.24);
+  box-shadow: inset 0 0 0 1px rgba(111, 143, 255, 0.34);
+}
+.protection-toggle[aria-checked="false"] .protection-toggle-icon-wrap {
+  background: rgba(217, 119, 6, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.2);
+}
+.protection-toggle[aria-checked="false"] .protection-toggle-icon {
+  color: #f0ba61;
+}
+.protection-toggle[aria-checked="false"] .protection-toggle-state {
+  background: rgba(217, 119, 6, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.2);
+  color: #f7ca81;
+}
+.protection-toggle[aria-checked="false"] .protection-toggle-switch {
+  background: rgba(217, 119, 6, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.24);
+}
+@media (max-width: 640px) {
+  .navheader2 .runner .btn {
+    height: 22px;
+    padding: 0 8px !important;
+    border-radius: 3px;
+  }
+  .protection-toggle-copy {
+    gap: 6px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .navheader2 .runner .btn,
+  .protection-toggle,
+  .protection-toggle-switch,
+  .protection-toggle-switch::after {
+    transition: none;
+  }
 }
 .button:hover {
   
@@ -201,9 +371,18 @@ html.pinokio-event-panel .runner {
 body.frozen {
   overflow: auto !important;
 }
+body.has-full-navbar .navheader2 {
+  border-top: 1px solid var(--border-color);
+}
+body.has-full-navbar .navheader2 .runner {
+  padding-inline: 12px;
+}
 @media only screen and (max-width: 768px) {
   body {
     flex-direction: column !important;
+  }
+  body.has-full-navbar .navheader2 .runner {
+    padding-inline: 8px;
   }
 }
 .ai-consent-overlay {
@@ -211,11 +390,11 @@ body.frozen {
   inset: 0;
   display: none;
   justify-items: center;
-  align-items: start;
+  align-items: center;
   z-index: 2147483000;
   padding: 16px;
-  background: rgba(15, 17, 23, 0.52);
-  backdrop-filter: blur(10px);
+  background: rgba(9, 12, 18, 0.54);
+  backdrop-filter: blur(12px);
   pointer-events: auto;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -224,15 +403,37 @@ body.frozen {
 .ai-consent-overlay.is-visible {
   display: grid;
 }
+@media (max-height: 720px) {
+  .ai-consent-overlay {
+    align-items: start;
+  }
+}
 .ai-consent-modal {
+  --ai-consent-surface: rgba(255, 255, 255, 0.98);
+  --ai-consent-border: rgba(15, 23, 42, 0.12);
+  --ai-consent-shadow: 0 22px 56px rgba(15, 23, 42, 0.18);
+  --ai-consent-text: #111827;
+  --ai-consent-muted: rgba(17, 24, 39, 0.72);
+  --ai-consent-soft: rgba(17, 24, 39, 0.56);
+  --ai-consent-panel: rgba(15, 23, 42, 0.035);
+  --ai-consent-panel-border: rgba(15, 23, 42, 0.08);
+  --ai-consent-icon-fg: #d1a750;
+  --ai-consent-primary-bg: #161b26;
+  --ai-consent-primary-text: #f4d086;
+  --ai-consent-primary-border: rgba(15, 23, 42, 0.26);
+  --ai-consent-primary-hover: #0f1520;
+  --ai-consent-secondary-bg: rgba(15, 23, 42, 0.04);
+  --ai-consent-secondary-border: rgba(15, 23, 42, 0.12);
+  --ai-consent-secondary-hover: rgba(15, 23, 42, 0.08);
+  --ai-consent-link: #6c7ea5;
   width: min(520px, 100%);
   max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px);
-  background: #fdfdfd;
-  color: #0f1117;
-  border-radius: 16px;
-  border: 1px solid #e8eaf0;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+  background: var(--ai-consent-surface);
+  color: var(--ai-consent-text);
+  border-radius: 18px;
+  border: 1px solid var(--ai-consent-border);
+  box-shadow: var(--ai-consent-shadow);
   padding: 22px 22px 18px;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
   animation: ai-pop 160ms ease-out;
@@ -245,60 +446,97 @@ body.frozen {
   pointer-events: auto;
 }
 body.dark .ai-consent-modal {
-  background: #0f1117;
-  color: #eef1f8;
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.5);
+  --ai-consent-surface: rgba(9, 12, 18, 0.98);
+  --ai-consent-border: rgba(255, 255, 255, 0.1);
+  --ai-consent-shadow: 0 28px 72px rgba(0, 0, 0, 0.52);
+  --ai-consent-text: #f3f5fb;
+  --ai-consent-muted: rgba(232, 236, 246, 0.78);
+  --ai-consent-soft: rgba(232, 236, 246, 0.58);
+  --ai-consent-panel: rgba(255, 255, 255, 0.04);
+  --ai-consent-panel-border: rgba(255, 255, 255, 0.08);
+  --ai-consent-icon-fg: #f2d18b;
+  --ai-consent-primary-bg: #f2d18b;
+  --ai-consent-primary-text: #10151f;
+  --ai-consent-primary-border: rgba(242, 209, 139, 0.34);
+  --ai-consent-primary-hover: #f6dca7;
+  --ai-consent-secondary-bg: rgba(255, 255, 255, 0.05);
+  --ai-consent-secondary-border: rgba(255, 255, 255, 0.1);
+  --ai-consent-secondary-hover: rgba(255, 255, 255, 0.09);
+  --ai-consent-link: #9db1d8;
 }
 .ai-consent-icon {
-  font-size: 28px;
-  margin-bottom: 10px;
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--ai-consent-panel);
+  border: 1px solid var(--ai-consent-panel-border);
+  color: var(--ai-consent-icon-fg);
+  font-size: 16px;
+  flex: 0 0 auto;
 }
 .ai-consent-header {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 6px;
+  gap: 14px;
+  margin-bottom: 10px;
 }
 .ai-consent-header .ai-consent-text {
   flex: 1;
 }
 .ai-consent-title {
-  margin: 0 0 10px;
+  margin: 0 0 6px;
   font-size: 18px;
+  line-height: 1.2;
   font-weight: 700;
 }
 .ai-consent-list {
-  margin: 0 0 14px;
-  padding-left: 18px;
-  color: #2c3143;
+  margin: 0 0 16px;
+  padding: 12px 14px 12px 18px;
+  color: var(--ai-consent-muted);
   line-height: 1.5;
+  border: 1px solid var(--ai-consent-panel-border);
+  border-radius: 12px;
+  background: var(--ai-consent-panel);
 }
 .ai-consent-desc {
-  margin: 6px 0 12px;
+  margin: 0;
   font-size: 14px;
-  color: #2f3241;
-}
-body.dark .ai-consent-desc {
-  color: #cdd5e7;
+  line-height: 1.45;
+  color: var(--ai-consent-muted);
 }
 .ai-consent-list li {
   margin-bottom: 6px;
   font-size: 14px;
 }
-body.dark .ai-consent-list {
-  color: #cdd5e7;
+.ai-consent-list li:last-child {
+  margin-bottom: 0;
+}
+.ai-consent-list strong {
+  color: var(--ai-consent-text);
+}
+.ai-consent-scope {
+  color: var(--ai-consent-text);
+  font-family: ui-monospace, "SFMono-Regular", SFMono-Regular, Menlo, Consolas, monospace;
+  word-break: break-all;
 }
 .ai-consent-remember {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   font-size: 14px;
-  color: #232635;
+  color: var(--ai-consent-muted);
   margin-bottom: 14px;
+  padding-top: 2px;
 }
-body.dark .ai-consent-remember {
-  color: #d8def0;
+.ai-consent-remember input {
+  margin-top: 2px;
+  accent-color: var(--ai-consent-primary-bg);
+}
+.ai-consent-remember-label {
+  line-height: 1.4;
 }
 .ai-consent-actions {
   display: flex;
@@ -308,46 +546,41 @@ body.dark .ai-consent-remember {
 .ai-btn-primary,
 .ai-btn-secondary {
   font: 600 14px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  min-height: 38px;
   padding: 9px 14px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 .ai-btn-primary {
-  background: linear-gradient(135deg, #2b7bff, #5e5df0);
-  color: #fff;
-  box-shadow: 0 10px 24px rgba(46, 111, 255, 0.25);
+  background: var(--ai-consent-primary-bg);
+  color: var(--ai-consent-primary-text);
+  border-color: var(--ai-consent-primary-border);
 }
 .ai-btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(46, 111, 255, 0.3);
+  background: var(--ai-consent-primary-hover);
 }
 .ai-btn-secondary {
-  background: #f5f7fb;
-  color: #0f1117;
-  border-color: #d8dbe5;
+  background: var(--ai-consent-secondary-bg);
+  color: var(--ai-consent-text);
+  border-color: var(--ai-consent-secondary-border);
 }
 .ai-btn-secondary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.06);
-}
-body.dark .ai-btn-secondary {
-  background: rgba(255, 255, 255, 0.08);
-  color: #eef1f8;
-  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--ai-consent-secondary-hover);
 }
 .ai-consent-manage {
   margin-top: 10px;
   background: none;
   border: none;
-  color: #3c6df0;
+  color: var(--ai-consent-link);
   font: 600 13px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
   cursor: pointer;
   padding: 0;
+  transition: color 120ms ease;
 }
-body.dark .ai-consent-manage {
-  color: #9bb4ff;
+.ai-consent-manage:hover {
+  color: var(--ai-consent-text);
 }
 .ai-manage-sheet {
   position: fixed;
@@ -544,13 +777,180 @@ const createRunControls = () => {
   const play = container ? container.querySelector(".play") : null
   const starting = container ? container.querySelector(".starting") : null
   const stop = container ? container.querySelector(".stop") : null
+  let currentState = "idle"
   const set = (state) => {
+    currentState = state
     if (!play || !starting || !stop) return
     play.classList.toggle("hidden", state !== "idle")
     starting.classList.toggle("hidden", state !== "starting")
-    stop.classList.toggle("hidden", state !== "running")
+    stop.classList.toggle("hidden", state !== "running" && state !== "stopping")
   }
-  return { set }
+  const get = () => currentState
+  const isActive = () => currentState === "running" || currentState === "starting" || currentState === "stopping"
+  return { set, get, isActive }
+}
+const createProtectionControls = (options = {}) => {
+  const button = document.querySelector("[data-protection-toggle]")
+  const state = button ? button.querySelector("[data-protection-state]") : null
+  const appId = typeof options.appId === "string" ? options.appId.trim() : ""
+  const runControls = options.runControls || null
+  let enabled = options.initialEnabled === true
+  let saving = false
+  const showPopup = async (text) => {
+    window.alert(text)
+  }
+  const sync = () => {
+    if (!button) {
+      return
+    }
+    button.dataset.enabled = enabled ? "true" : "false"
+    button.setAttribute("aria-checked", enabled ? "true" : "false")
+    button.setAttribute("aria-busy", saving ? "true" : "false")
+    button.setAttribute("aria-label", enabled ? "Protection on" : "Protection off")
+    button.classList.toggle("is-saving", saving)
+    button.disabled = saving
+    if (state) {
+      state.textContent = enabled ? "On" : "Off"
+    }
+    button.title = enabled
+      ? "Blocks packages newer than 72 hours."
+      : "Skips Bluefairy for new runs."
+  }
+  const parseSaveError = async (response) => {
+    try {
+      const payload = await response.json()
+      if (payload && payload.error) {
+        return String(payload.error)
+      }
+    } catch (_) {}
+    return `Failed to update protection (${response.status})`
+  }
+  const save = async (nextEnabled) => {
+    if (!appId) {
+      enabled = nextEnabled !== false
+      sync()
+      return enabled
+    }
+    saving = true
+    sync()
+    try {
+      const response = await fetch(`/apps/preferences/${encodeURIComponent(appId)}`, {
+        method: "PUT",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          protection_enabled: nextEnabled !== false
+        })
+      })
+      if (!response.ok) {
+        throw new Error(await parseSaveError(response))
+      }
+      const payload = await response.json().catch(() => null)
+      enabled = payload && payload.preference
+        ? payload.preference.protection_enabled !== false
+        : (nextEnabled !== false)
+      return enabled
+    } finally {
+      saving = false
+      sync()
+    }
+  }
+  const apply = async (nextEnabled) => {
+    if (saving) {
+      return
+    }
+    const isRunning = runControls && typeof runControls.isActive === "function"
+      ? runControls.isActive()
+      : false
+    try {
+      if (isRunning) {
+        await showPopup("Stop the script before changing protection.")
+        sync()
+        return
+      }
+      await save(nextEnabled)
+    } catch (error) {
+      await showPopup(error && error.message ? error.message : "Failed to update protection.")
+      sync()
+    }
+  }
+  if (button) {
+    sync()
+    button.addEventListener("click", async (event) => {
+      event.preventDefault()
+      await apply(!enabled)
+    })
+  }
+  return {
+    getEnabled() {
+      return enabled
+    },
+    sync
+  }
+}
+const PLUGIN_TERMINAL_IDLE_WINDOW_MS = 1200
+const createPluginTerminalDiscoveryRefresher = (context = {}) => {
+  const enabled = (() => {
+    try {
+      return window.location.pathname.startsWith("/run/plugin/")
+        || (window.location.pathname.startsWith("/run/api/") && /\/pinokio\.js$/i.test(window.location.pathname))
+    } catch (_) {
+      return false
+    }
+  })()
+  let idleTimer = null
+  let armed = false
+  let sawStream = false
+  const clearIdleTimer = () => {
+    if (idleTimer) {
+      clearTimeout(idleTimer)
+      idleTimer = null
+    }
+  }
+  const refresh = () => {
+    if (!enabled || !armed || !sawStream) {
+      return
+    }
+    armed = false
+    sawStream = false
+    try {
+      const discovery = window.PinokioTerminalsDiscovery
+      if (!discovery || typeof discovery.refreshTerminalSessions !== "function") {
+        return
+      }
+      discovery.refreshTerminalSessions(window.location.href, context.cwd || "", {
+        retryDelays: []
+      })
+    } catch (_) {}
+  }
+  return {
+    arm(meaningful) {
+      if (!enabled || !meaningful) {
+        return
+      }
+      armed = true
+      sawStream = false
+      clearIdleTimer()
+    },
+    markActivity() {
+      if (!enabled || !armed) {
+        return
+      }
+      sawStream = true
+      clearIdleTimer()
+      idleTimer = setTimeout(() => {
+        idleTimer = null
+        refresh()
+      }, PLUGIN_TERMINAL_IDLE_WINDOW_MS)
+    },
+    clear() {
+      armed = false
+      sawStream = false
+      clearIdleTimer()
+    }
+  }
 }
 const createAiConsentManager = (context = {}) => {
   const storage = getSafeLocalStorage()
@@ -830,6 +1230,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const scriptUri = <% if (script_path) { %><%- JSON.stringify(script_path) %><% } else { %>null<% } %>
   const scriptCwd = <% if (cwd) { %><%- JSON.stringify(cwd) %><% } else { %>null<% } %>
   const scriptAction = <% if (typeof action !== 'undefined') { %><%- JSON.stringify(action) %><% } else { %>null<% } %>
+  const protectionAppId = <% if (typeof protection_app_id !== 'undefined' && protection_app_id) { %><%- JSON.stringify(protection_app_id) %><% } else { %>""<% } %>
+  const initialProtectionEnabled = <% if (typeof protection_enabled !== 'undefined') { %><%- JSON.stringify(protection_enabled === true) %><% } else { %>false<% } %>
+  const activeProcessWait = <% if (typeof active_process_wait !== 'undefined' && active_process_wait) { %><%- JSON.stringify(active_process_wait) %><% } else { %>null<% } %>
+  if (activeProcessWait && (activeProcessWait.title || activeProcessWait.description) && window.PinokioWaitFooterStatus) {
+    window.PinokioWaitFooterStatus.show(activeProcessWait)
+  }
   const shouldBypassAiConsent = () => {
     const normalize = (value) => (typeof value === "string" ? value.replace(/\\/g, "/") : "")
     const uri = normalize(scriptUri || "")
@@ -848,6 +1254,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     uri: scriptUri || ("~" + location.pathname)
   })
   const runControls = createRunControls()
+  const pluginTerminalDiscoveryRefresher = createPluginTerminalDiscoveryRefresher({
+    cwd: scriptCwd
+  })
+  let rpc = null
+  const protectionControls = createProtectionControls({
+    appId: protectionAppId,
+    initialEnabled: initialProtectionEnabled,
+    runControls
+  })
   consentManager.showChipIfRemembered()
   class RPC {
     constructor() {
@@ -923,16 +1338,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
     notifyLineSubmitted(line, meta = {}) {
-      if (this.inputTracker) {
-        this.inputTracker.submit(line, meta)
-        return
-      }
       const safeLine = sanitizePreviewLine(line || "")
       const preview = safeLine.trim()
       const limit = 200
       const truncated = preview.length > limit ? preview.slice(0, limit) + "..." : preview
       const hadLineBreak = Boolean(meta && meta.hadLineBreak)
       const meaningful = truncated.length > 0 || hadLineBreak
+      pluginTerminalDiscoveryRefresher.arm(meaningful)
+      if (this.inputTracker) {
+        this.inputTracker.submit(line, meta)
+        return
+      }
       postMessageToAncestors({
         type: "terminal-input",
         frame: window.name || null,
@@ -955,6 +1371,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       runControls.set("idle")
     }
     stop() {
+      if (runControls && typeof runControls.set === "function" && runControls.get() !== "idle") {
+        runControls.set("stopping")
+      }
       const params = {
         uri: scriptUri || ("~" + location.pathname)
       }
@@ -1052,6 +1471,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const payload = {
           uri: scriptUri || ("~" + location.pathname),
           mode,
+          protection_enabled: protectionControls.getEnabled(),
           input: query,
           client: {
             cols: this.term.cols,
@@ -1074,17 +1494,17 @@ document.addEventListener("DOMContentLoaded", async () => {
             refreshParent(packet)
             reloadMemory()
             runControls.set("running")
-            if (packet.data && packet.data.description) {
+            if (packet.data && (packet.data.title || packet.data.description)) {
               if ('current' in packet.data) {
                 document.querySelector("#status-window").innerHTML = `<b>
                   <i class="fa-solid fa-circle-notch fa-spin"></i>(${packet.data.current+1}/${packet.data.total}) ${packet.data.title ? packet.data.title : ''}
                 </b>
-                <div class='flexible content'>${packet.data.description}</div>`
+                <div class='flexible content'>${packet.data.description ? packet.data.description : ''}</div>`
               } else {
                 document.querySelector("#status-window").innerHTML = `<b>
                   <i class="fa-solid fa-circle-notch fa-spin"></i> ${packet.data.title ? packet.data.title : ''}
                 </b>
-                <div class='flexible content'></div>`
+                <div class='flexible content'>${packet.data.description ? packet.data.description : ''}</div>`
 //                <div class='toggle-expand'>
 //                  <i class="fa-solid fa-circle-chevron-up"></i>
 //                </div>`
@@ -1096,6 +1516,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
           } else if (packet.type === "stream") {
             refreshParent(packet)
+            pluginTerminalDiscoveryRefresher.markActivity()
             // set the current shell id
             const previousShellId = shell_id
             if (packet.data.id) {
@@ -1128,6 +1549,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             runControls.set("running")
           } else if (packet.type === 'disconnect') {
             refreshParent(packet)
+            pluginTerminalDiscoveryRefresher.clear()
             reloadMemory()
             this.term.write("\r\nDisconnected...\r\n")
             document.querySelector("#status-window").innerHTML = "<b>Ready</b>"
@@ -1260,6 +1682,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 //              uri: "~" + location.pathname,
               uri: packet.id
             })
+          } else if (packet.type === "process.wait.start") {
+            if (window.PinokioWaitFooterStatus) {
+              window.PinokioWaitFooterStatus.show(packet.data)
+            }
+          } else if (packet.type === "process.wait.end") {
+            if (window.PinokioWaitFooterStatus) {
+              window.PinokioWaitFooterStatus.hide()
+            }
           } else if (packet.type === 'wait') {
             await WaitModal(packet.data)
           } else if (packet.type === "htmlmodal") {
@@ -1423,6 +1853,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               n.Noty(payload)
             }
           } else if (packet.type === "restart") {
+            pluginTerminalDiscoveryRefresher.clear()
             try {
               if (window.parent && window.parent !== window && typeof window.parent.postMessage === "function") {
                 window.parent.postMessage(packet, "*")
@@ -1469,7 +1900,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               text: `${packet.data}`,
             })
           } else if (packet.type === "error") {
-            runControls.set("idle")
+            pluginTerminalDiscoveryRefresher.clear()
 
 
             document.querySelector("#error-screen").classList.remove("hidden")
@@ -1547,6 +1978,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                   type: 'success'
                 })
                 */
+                pluginTerminalDiscoveryRefresher.clear()
                 runControls.set("idle")
               }, 0)
               //this.socket.close()
@@ -1575,6 +2007,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       this.mode = (mode ? mode : "run")
       const allowed = aiConsentRequired ? await consentManager.ensureAllowed() : true
       if (!allowed) {
+        pluginTerminalDiscoveryRefresher.clear()
         runControls.set("idle")
         n.Noty({
           text: "Run canceled; AI agents remain blocked for this folder.",
@@ -1601,6 +2034,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         await this.start(mode)
         return true
       } catch (error) {
+        pluginTerminalDiscoveryRefresher.clear()
         runControls.set("idle")
         const message = error && error.message ? error.message : "Failed to start"
         n.Noty({
@@ -2352,7 +2786,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
   <% if (!install_required) { %>
-    const rpc = new RPC()
+    rpc = new RPC()
 
     <% if (mod && runnable) { %>
       window.addEventListener('message', function(event) {
@@ -2399,7 +2833,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       //    }, (stream) => {
       //      console.log("#", stream)
       //    })
-          runControls.set("idle")
         })
       }
       if (document.querySelector(".play")) {
@@ -2411,7 +2844,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     <% if (stop) { %>
       await rpc.stop()
-      runControls.set("idle")
     <% } else { %>
       <% if (run) { %>
         // run (query params run=true)
@@ -2496,10 +2928,38 @@ const reloadMemory = async () => {
 </script>
 </head>
 <% if (install_required) { %>
-<body class='frozen <%=theme%>'>
+<body class='terminal-page frozen <%=theme%> <%= locals.full_navbar ? "has-full-navbar" : "" %>' data-task-save-cwd="<%= cwd || '' %>" data-task-save-workspaces-root="<%= taskSaveWorkspacesRoot || '' %>">
 <% } else { %>
-<body class='<%=theme%>'>
+<body class='terminal-page <%=theme%> <%= locals.full_navbar ? "has-full-navbar" : "" %>' data-task-save-cwd="<%= cwd || '' %>" data-task-save-workspaces-root="<%= taskSaveWorkspacesRoot || '' %>">
 <% } %>
+  <% if (locals.full_navbar) { %>
+    <header class="navheader grabbable">
+      <h1>
+        <a class="home" href="/home"><img class="icon" src="/pinokio-black.png"><i class="fa-solid fa-expand home-expand-icon" aria-hidden="true"></i></a><div class="header-drag-handle" aria-hidden="true" title="Drag minimized header"></div>
+        <button class="btn2" id="minimize-header" data-tippy-content="fullscreen" title="fullscreen">
+          <div><i class="fa-solid fa-expand"></i></div>
+        </button>
+        <button class="btn2" id="back" data-tippy-content="back"><div><i class="fa-solid fa-chevron-left"></i></div></button>
+        <button class="btn2" id="forward" data-tippy-content="forward"><div><i class="fa-solid fa-chevron-right"></i></div></button>
+        <button class="btn2" id="refresh-page" data-tippy-content="refresh"><div><i class="fa-solid fa-rotate-right"></i></div></button>
+        <button class="btn2" id="screenshot" data-tippy-content="screen capture"><i class="fa-solid fa-camera"></i></button>
+        <button class="btn2" id="inspector" data-tippy-content="X-ray mode"><i class="fa-solid fa-eye"></i></button>
+        <div class="flexible"></div>
+        <a class="btn2" href="/columns" data-tippy-content="split into 2 columns">
+          <div><i class="fa-solid fa-table-columns"></i></div>
+        </a>
+        <a class="btn2" href="/rows" data-tippy-content="split into 2 rows">
+          <div><i class="fa-solid fa-table-columns fa-rotate-270"></i></div>
+        </a>
+        <button class="btn2" id="new-window" data-tippy-content="open a new window" title="open a new window" data-agent="<%=agent%>">
+          <div><i class="fa-solid fa-plus"></i></div>
+        </button>
+        <button class="btn2 hidden" id="close-window" data-tippy-content="close this section">
+          <div><i class="fa-solid fa-xmark"></i></div>
+        </button>
+      </h1>
+    </header>
+  <% } %>
   <% if (!install_required) { %>
     <header class='navheader2'>
       <div class='runner'>
@@ -2507,13 +2967,33 @@ const reloadMemory = async () => {
           <a class='btn' href="<%=prev%>"><i class="fa-solid fa-arrow-left"></i> Back</a>
         <% } %>
         <div class='btn run <%= mod && runnable ? "" : "hidden" %>'>
-          <span class='play'><i class="fa-solid fa-play"></i> Start</span>
+          <span class='play'><i class="fa-solid fa-play"></i> Run</span>
           <span class='starting hidden'><i class="fa-solid fa-circle-notch fa-spin"></i> Starting...</span>
           <span class='stop hidden'><i class="fa-solid fa-stop"></i> Stop</span>
         </div>
         <% if (locals.filepath) { %>
-          <button class='btn' id='open-fs' data-filepath="<%=filepath%>"><i class="fa-solid fa-eye"></i> Script</button>
+          <button class='btn' id='open-fs' data-filepath="<%=filepath%>" data-command="view"><i class="fa-solid fa-folder-open"></i> File Explorer</button>
         <% } %>
+        <% if (locals.protection_app_id) { %>
+          <button
+            type='button'
+            class='btn protection-toggle'
+            data-protection-toggle
+            role='switch'
+            aria-checked="<%= protection_enabled === true ? 'true' : 'false' %>"
+            aria-label="Protection <%= protection_enabled === true ? 'on' : 'off' %>"
+          >
+            <span class='protection-toggle-copy'>
+              <span class='protection-toggle-icon-wrap' aria-hidden="true">
+                <i class="fa-solid fa-shield-halved protection-toggle-icon"></i>
+              </span>
+              <span class='protection-toggle-label'>Protection</span>
+              <span class='protection-toggle-state' data-protection-state><%= protection_enabled === true ? 'On' : 'Off' %></span>
+            </span>
+            <span class='protection-toggle-switch' aria-hidden="true"></span>
+          </button>
+        <% } %>
+        <button class='btn hidden' type='button' data-save-task-button hidden><i class="fa-solid fa-bookmark"></i> Save task</button>
         <div id='status-window'></div>
         <div id='progress-window' class='hidden'><div id='progress-bar'></div></div>
     </div>
@@ -2618,5 +3098,13 @@ const reloadMemory = async () => {
       </a>
     </div>
   </div>
+  <% if (typeof draft_watch_enabled !== 'undefined' && draft_watch_enabled) { %>
+    <script>
+      window.PinokioDraftContext = {
+        cwd: <%- JSON.stringify((typeof draft_watch_cwd !== 'undefined' && draft_watch_cwd) ? draft_watch_cwd : '').replace(/</g, '\\u003c') %>
+      };
+    </script>
+    <script src="/drafts.js"></script>
+  <% } %>
 </body>
 </html>

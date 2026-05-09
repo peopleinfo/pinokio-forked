@@ -20,6 +20,13 @@ class AppPreferencesService {
     if (this.kernel && this.kernel.homedir && typeof this.kernel.path === "function") {
       return this.kernel.path("cache", "apps", "preferences.json")
     }
+    const configuredHome = (
+      (this.kernel && this.kernel.store && typeof this.kernel.store.get === "function" ? this.kernel.store.get("home") : null)
+      || process.env.PINOKIO_HOME
+    )
+    if (configuredHome) {
+      return path.resolve(configuredHome, "cache", "apps", "preferences.json")
+    }
     return path.resolve(os.homedir(), "pinokio", "cache", "apps", "preferences.json")
   }
 
@@ -114,6 +121,9 @@ class AppPreferencesService {
     return {
       starred: Boolean(entry && entry.starred),
       starred_at: entry && entry.starred ? this.toIsoOrNull(entry.starred_at) : null,
+      protection_enabled: entry && Object.prototype.hasOwnProperty.call(entry, "protection_enabled")
+        ? Boolean(entry.protection_enabled)
+        : false,
       last_launch_at: this.toIsoOrNull(entry && entry.last_launch_at),
       last_launch_source: this.normalizeLaunchSource(entry && entry.last_launch_source),
       launch_count_total: this.toCount(entry && entry.launch_count_total),
@@ -204,19 +214,39 @@ class AppPreferencesService {
   }
 
   async setStar(appId = "", starred = false) {
+    return this.updatePreference(appId, {
+      starred: Boolean(starred)
+    })
+  }
+
+  async setProtectionEnabled(appId = "", protectionEnabled = true) {
+    return this.updatePreference(appId, {
+      protection_enabled: Boolean(protectionEnabled)
+    })
+  }
+
+  async updatePreference(appId = "", updates = {}) {
     const normalizedAppId = this.normalizeAppId(appId)
     if (!normalizedAppId) {
       return null
     }
-    const shouldStar = Boolean(starred)
+    const hasStarred = Object.prototype.hasOwnProperty.call(updates, "starred")
+    const hasProtectionEnabled = Object.prototype.hasOwnProperty.call(updates, "protection_enabled")
+    if (!hasStarred && !hasProtectionEnabled) {
+      return this.getPreference(normalizedAppId)
+    }
     return this.withWriteLock(async () => {
       const registry = await this.readPreferencesUnsafe()
       const items = { ...registry.items }
       const current = this.coercePreferenceEntry(items[normalizedAppId] || {})
-      const next = {
-        ...current,
-        starred: shouldStar,
-        starred_at: shouldStar ? (current.starred_at || this.normalizeTimestamp()) : null
+      const next = { ...current }
+      if (hasStarred) {
+        const shouldStar = Boolean(updates.starred)
+        next.starred = shouldStar
+        next.starred_at = shouldStar ? (current.starred_at || this.normalizeTimestamp()) : null
+      }
+      if (hasProtectionEnabled) {
+        next.protection_enabled = Boolean(updates.protection_enabled)
       }
       items[normalizedAppId] = next
       await this.writePreferencesUnsafe(items)

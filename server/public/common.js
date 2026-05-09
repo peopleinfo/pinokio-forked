@@ -8,7 +8,7 @@ const createLauncherDebugLog = (...args) => {
   }
 };
 
-const guardedRoutePrefixes = [
+const requirementsGuardedRoutePrefixes = [
   '/pinokio/launch/',
   '/pinokio/browser/',
   '/v/',
@@ -16,18 +16,28 @@ const guardedRoutePrefixes = [
   '/api/',
   '/_api/',
   '/run/',
+  '/pinokio/run/',
   '/tools',
   '/bundle/',
-  '/init',
   '/connect/',
   '/github',
   '/setup/',
   '/requirements_check/',
-  '/agents',
-  '/network',
-  '/net/',
   '/git/',
   '/dev/',
+];
+
+const startupGuardedRoutePrefixes = [
+  '/create',
+  '/init',
+  '/initialize/',
+  '/connect/',
+  '/github',
+  '/setup/',
+  '/requirements_check/',
+  '/plugins',
+  '/network',
+  '/net/',
 ];
 
 function needsRequirementsGuard(targetUrl) {
@@ -39,7 +49,23 @@ function needsRequirementsGuard(targetUrl) {
       const mode = (query.get('mode') || '').toLowerCase();
       return mode === 'download' || mode === 'terminals';
     }
-    for (const prefix of guardedRoutePrefixes) {
+    for (const prefix of requirementsGuardedRoutePrefixes) {
+      if (path === prefix || path.startsWith(prefix)) {
+        return true;
+      }
+    }
+    return false;
+  } catch (_) {
+    // Be safe and keep guarding if we cannot parse
+    return true;
+  }
+}
+
+function needsStartupGuard(targetUrl) {
+  try {
+    const url = typeof targetUrl === 'string' ? new URL(targetUrl, window.location.href) : targetUrl;
+    const path = url.pathname || '';
+    for (const prefix of startupGuardedRoutePrefixes) {
       if (path === prefix || path.startsWith(prefix)) {
         return true;
       }
@@ -79,13 +105,106 @@ function createMinimalLoadingSwal () {
   });
   return close;
 }
-function check_ready () {
+
+const PINOKIO_WAIT_FOOTER_ID = 'pinokio-process-wait-footer-status'
+const PINOKIO_INSTALL_SPINNER_VARIANTS = ["grid-shift", "single-vacancy", "pulse-swap", "corner-chase", "flip-2x2", "stack-ripple", "pixel-orbit", "binary-shuffle"]
+const PINOKIO_INSTALL_STATUS_SPINNER_HTML = `
+<span class="install-status-spinner" aria-hidden="true">
+  <span class="install-status-grid-anchor install-status-grid-anchor-1"></span>
+  <span class="install-status-grid-anchor install-status-grid-anchor-2"></span>
+  <span class="install-status-grid-anchor install-status-grid-anchor-3"></span>
+  <span class="install-status-grid-anchor install-status-grid-anchor-4"></span>
+  <span class="install-status-grid-tile install-status-grid-tile-1"></span>
+  <span class="install-status-grid-tile install-status-grid-tile-2"></span>
+  <span class="install-status-grid-tile install-status-grid-tile-3"></span>
+  <span class="install-status-grid-tile install-status-grid-tile-4"></span>
+  <span class="install-status-grid-chaser"></span>
+  <span class="install-status-grid-pixel"></span>
+</span>`
+let lastPinokioWaitSpinnerVariant = null
+
+function escapePinokioStatusHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function ensurePinokioWaitFooterStatus() {
+  let status = document.getElementById(PINOKIO_WAIT_FOOTER_ID)
+  if (status) {
+    return status
+  }
+  status = document.createElement('div')
+  status.id = PINOKIO_WAIT_FOOTER_ID
+  status.className = 'pinokio-install-inline-status pinokio-process-wait-footer-status'
+  status.hidden = true
+  status.setAttribute('aria-live', 'polite')
+
+  const anchor = document.querySelector('.terminal-container')
+    || document.querySelector('main')
+    || document.querySelector('#terminal')?.parentElement
+    || document.querySelector('footer')
+    || document.body
+
+  if (anchor && anchor !== document.body) {
+    anchor.insertAdjacentElement('afterend', status)
+  } else {
+    document.body.appendChild(status)
+  }
+  return status
+}
+
+function showPinokioWaitFooterStatus(data = {}) {
+  const title = data.title || 'Waiting'
+  const description = data.description || data.message || ''
+  const status = ensurePinokioWaitFooterStatus()
+  const candidates = PINOKIO_INSTALL_SPINNER_VARIANTS.filter((variant) => variant !== lastPinokioWaitSpinnerVariant)
+  const pool = candidates.length > 0 ? candidates : PINOKIO_INSTALL_SPINNER_VARIANTS
+  lastPinokioWaitSpinnerVariant = pool[Math.floor(Math.random() * pool.length)]
+  document.documentElement.dataset.installSpinnerVariant = lastPinokioWaitSpinnerVariant
+  status.className = 'pinokio-install-inline-status pinokio-process-wait-footer-status is-progress'
+  status.innerHTML = `
+    <div class="install-status-shell">
+      ${PINOKIO_INSTALL_STATUS_SPINNER_HTML}
+      <div class="install-status-copy">
+        <div class="install-status-title">${escapePinokioStatusHtml(title)}</div>
+        ${description ? `<div class="install-status-detail">${escapePinokioStatusHtml(description)}</div>` : ''}
+      </div>
+    </div>
+  `
+  status.hidden = false
+  document.body.classList.add('pinokio-install-status-visible')
+}
+
+function hidePinokioWaitFooterStatus() {
+  const status = document.getElementById(PINOKIO_WAIT_FOOTER_ID)
+  if (!status) {
+    return
+  }
+  status.hidden = true
+  status.innerHTML = ''
+  document.body.classList.remove('pinokio-install-status-visible')
+}
+
+if (typeof window !== 'undefined') {
+  window.PinokioWaitFooterStatus = {
+    show: showPinokioWaitFooterStatus,
+    hide: hidePinokioWaitFooterStatus
+  }
+}
+function check_ready (targetUrl = null, options = {}) {
   createLauncherDebugLog('check_ready start');
   return fetch("/pinokio/requirements_ready").then((res) => {
     return res.json()
   }).then((res) => {
     createLauncherDebugLog('check_ready response', res);
+    const requiresStartup = !!(options && options.requireStartup) || (targetUrl ? needsStartupGuard(targetUrl) : false);
     if (res.error) {
+      return false
+    } else if (requiresStartup && res.startup_pending) {
       return false
     } else if (!res.requirements_pending) {
       return true
@@ -143,6 +262,7 @@ if (onfinish) {
 function wait_ready (targetUrl = null, options = {}) {
   createLauncherDebugLog('wait_ready invoked');
   const showLoader = !(options && options.showLoader === false);
+  const requiresExplicitStartupGuard = !!(options && options.requireStartup);
   let navTarget = null;
   if (targetUrl) {
     try {
@@ -150,13 +270,15 @@ function wait_ready (targetUrl = null, options = {}) {
     } catch (_) {
       navTarget = null;
     }
-    if (navTarget && !needsRequirementsGuard(navTarget)) {
+    if (navTarget && !needsRequirementsGuard(navTarget) && !needsStartupGuard(navTarget)) {
       createLauncherDebugLog('wait_ready short-circuit (unguarded route)', { path: navTarget.pathname });
       return Promise.resolve({ ready: true, closeModal: null });
     }
+  } else if (!requiresExplicitStartupGuard) {
+    return Promise.resolve({ ready: true, closeModal: null });
   }
   return new Promise((resolve, reject) => {
-    check_ready().then((ready) => {
+    check_ready(navTarget, options).then((ready) => {
       createLauncherDebugLog('wait_ready initial requirements readiness', ready);
       let loader = null;
       const ensureLoader = () => {
@@ -173,12 +295,15 @@ function wait_ready (targetUrl = null, options = {}) {
         resolve(result);
       };
       if (ready) {
-        const initialLoader = pinokioDevGuardSatisfied ? null : ensureLoader();
-        ensureDevReady(initialLoader, 'initial', undefined, showLoader).then(finalize)
+        if (pinokioDevGuardSatisfied) {
+          finalize({ ready: true, closeModal: null });
+          return;
+        }
+        ensureDevReady(null, 'initial', undefined, showLoader).then(finalize)
       } else {
         ensureLoader();
         let interval = setInterval(() => {
-          check_ready().then((ready) => {
+          check_ready(navTarget, options).then((ready) => {
             createLauncherDebugLog('wait_ready polling requirements readiness', ready);
             if (ready) {
               clearInterval(interval)
@@ -2294,6 +2419,14 @@ if (typeof hotkeys === 'function') {
     playNextSound();
   };
 
+  window.PinokioPlayNotificationSound = (sound) => {
+    if (sound === false || isFalseyString(sound)) {
+      return false;
+    }
+    enqueueSound(typeof sound === 'string' && sound ? sound : '/chime.mp3');
+    return true;
+  };
+
   const handlePacket = (packet) => {
     if (!packet || packet.id !== CHANNEL_ID || packet.type !== 'notification') {
       return;
@@ -2654,7 +2787,16 @@ if (typeof hotkeys === 'function') {
       try { overlay.remove(); } catch (_) {}
       try { window.__pinokioConnectCurtainInstalled = true; window.__pinokioConnectCurtainInstalling = false; } catch (_) {}
     };
-    overlay.addEventListener('pointerdown', onTap, { once: true, capture: true });
+    overlay.addEventListener('click', onTap, { once: true, capture: true });
+    overlay.addEventListener('keydown', (e) => {
+      if (!e) {
+        return;
+      }
+      const key = e.key || '';
+      if (key === 'Enter' || key === ' ' || key === 'Spacebar') {
+        onTap(e);
+      }
+    }, { capture: true });
     document.body.appendChild(overlay);
   };
 
@@ -2665,10 +2807,21 @@ if (typeof hotkeys === 'function') {
   }
 })();
 const refreshParent = (e) => {
+  let payload = e;
+  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+    payload = { ...payload };
+    if (!payload.frame) {
+      try {
+        if (typeof window !== 'undefined' && typeof window.name === 'string' && window.name) {
+          payload.frame = window.name;
+        }
+      } catch (_) {}
+    }
+  }
   let dispatched = false;
   if (typeof window !== 'undefined' && typeof window.PinokioBroadcastMessage === 'function') {
     try {
-      dispatched = window.PinokioBroadcastMessage(e, '*', window);
+      dispatched = window.PinokioBroadcastMessage(payload, '*', window);
     } catch (_) {
       dispatched = false;
     }
@@ -2678,7 +2831,7 @@ const refreshParent = (e) => {
   }
   try {
     if (window.parent && window.parent !== window && typeof window.parent.postMessage === 'function') {
-      window.parent.postMessage(e, '*');
+      window.parent.postMessage(payload, '*');
     }
   } catch (_) {}
 }
@@ -3397,6 +3550,28 @@ document.addEventListener("DOMContentLoaded", () => {
     })
   }
 
+  const universalLauncherState = {
+    pendingDefaults: null,
+    shouldCleanupQuery: false,
+    loaderPromise: null,
+    stylesheetReady: false,
+    quickActionMenuReady: false,
+  };
+
+  function matchesUniversalLauncherAsset(node, assetPath) {
+    if (!node) {
+      return false;
+    }
+    const rawHref = node.getAttribute('href') || node.getAttribute('src') || '';
+    if (!rawHref) {
+      return false;
+    }
+    try {
+      return new URL(rawHref, window.location.origin).pathname === assetPath;
+    } catch (_) {
+      return rawHref === assetPath;
+    }
+  }
   const createLauncherState = {
     pendingDefaults: null,
     shouldCleanupQuery: false,
@@ -3406,34 +3581,220 @@ document.addEventListener("DOMContentLoaded", () => {
     tools: null,
     toolsPromise: null
   };
-  const ASK_AI_FALLBACK_TOOLS = [
-    {
-      value: 'claude',
-      label: 'Claude Code',
-      iconSrc: '/asset/plugin/code/claude/claude.png',
-      href: '/run/plugin/code/claude/pinokio.js',
-      category: 'CLI',
-      isDefault: true
-    },
-    {
-      value: 'codex',
-      label: 'OpenAI Codex',
-      iconSrc: '/asset/plugin/code/codex/openai.webp',
-      href: '/run/plugin/code/codex/pinokio.js',
-      category: 'CLI',
-      isDefault: false
-    },
-    {
-      value: 'gemini',
-      label: 'Google Gemini CLI',
-      iconSrc: '/asset/plugin/code/gemini/gemini.jpeg',
-      href: '/run/plugin/code/gemini/pinokio.js',
-      category: 'CLI',
-      isDefault: false
-    }
-  ];
 
+  initializeUniversalLauncherIntegration();
   initializeCreateLauncherIntegration();
+
+  function initializeUniversalLauncherIntegration() {
+    const defaults = parseUniversalLauncherDefaults();
+    const triggers = Array.from(document.querySelectorAll('[data-universal-launcher-open]'));
+    createLauncherDebugLog('initializeUniversalLauncherIntegration', {
+      defaultsPresent: Boolean(defaults),
+      triggerCount: triggers.length
+    });
+    if (triggers.length === 0 && !defaults) {
+      createLauncherDebugLog('initializeUniversalLauncherIntegration aborted (no trigger/defaults)');
+      return;
+    }
+
+    initUniversalQuickActionMenu();
+    ensureUniversalLauncherStylesheet();
+    if (defaults) {
+      universalLauncherState.pendingDefaults = defaults;
+      universalLauncherState.shouldCleanupQuery = true;
+    }
+
+    ensureUniversalLauncherModule().then((api) => {
+      createLauncherDebugLog('ensureUniversalLauncherModule resolved', { api: Boolean(api) });
+      if (!api) {
+        return;
+      }
+      initUniversalLauncherTriggers(api);
+      warmUniversalLauncherModal(api);
+      openPendingUniversalLauncherModal(api);
+    });
+  }
+
+  function ensureUniversalLauncherStylesheet() {
+    if (universalLauncherState.stylesheetReady) {
+      return;
+    }
+    const existing = document.querySelector('link[data-universal-launcher-stylesheet="true"]')
+      || Array.from(document.querySelectorAll('link[href]')).find((node) => matchesUniversalLauncherAsset(node, '/universal-launcher.css'));
+    if (existing) {
+      existing.dataset.universalLauncherStylesheet = 'true';
+      universalLauncherState.stylesheetReady = true;
+      return;
+    }
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = '/universal-launcher.css';
+    link.dataset.universalLauncherStylesheet = 'true';
+    const target = document.head || document.body || document.documentElement;
+    if (!target) {
+      return;
+    }
+    target.appendChild(link);
+    universalLauncherState.stylesheetReady = true;
+  }
+
+  function ensureUniversalLauncherModule() {
+    if (window.UniversalLauncher) {
+      createLauncherDebugLog('ensureUniversalLauncherModule: window.UniversalLauncher already available');
+      return Promise.resolve(window.UniversalLauncher);
+    }
+    if (universalLauncherState.loaderPromise) {
+      createLauncherDebugLog('ensureUniversalLauncherModule: loaderPromise already pending');
+      return universalLauncherState.loaderPromise;
+    }
+
+    universalLauncherState.loaderPromise = new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = '/universal-launcher.js';
+      script.async = true;
+      script.onload = () => {
+        createLauncherDebugLog('universal-launcher.js loaded', { hasModule: Boolean(window.UniversalLauncher) });
+        resolve(window.UniversalLauncher || null);
+      };
+      script.onerror = (error) => {
+        console.warn('Failed to load universal launcher module', error);
+        createLauncherDebugLog('universal-launcher.js failed to load', error);
+        resolve(null);
+      };
+      const target = document.head || document.body || document.documentElement;
+      createLauncherDebugLog('injecting universal-launcher.js <script>', { target: target ? target.nodeName : 'unknown' });
+      target.appendChild(script);
+    });
+
+    return universalLauncherState.loaderPromise;
+  }
+
+  function warmUniversalLauncherModal(api) {
+    if (!api || typeof api.ensureModalReady !== 'function') {
+      return;
+    }
+    const runWarmup = () => {
+      try {
+        api.ensureModalReady();
+      } catch (error) {
+        createLauncherDebugLog('universal ensureModalReady failed', error);
+      }
+    };
+    setTimeout(runWarmup, 0);
+  }
+
+  function closeUniversalQuickActionMenus(except = null) {
+    const openMenus = Array.from(document.querySelectorAll('.universal-create-menu[open]'));
+    openMenus.forEach((menu) => {
+      if (except && menu === except) {
+        return;
+      }
+      menu.removeAttribute('open');
+    });
+  }
+
+  function initUniversalQuickActionMenu() {
+    if (universalLauncherState.quickActionMenuReady) {
+      return;
+    }
+    const menus = Array.from(document.querySelectorAll('.universal-create-menu'));
+    if (menus.length === 0) {
+      return;
+    }
+    universalLauncherState.quickActionMenuReady = true;
+
+    menus.forEach((menu) => {
+      menu.addEventListener('toggle', () => {
+        if (!menu.open) {
+          return;
+        }
+        closeUniversalQuickActionMenus(menu);
+      });
+    });
+
+    document.addEventListener('pointerdown', (event) => {
+      const openMenus = Array.from(document.querySelectorAll('.universal-create-menu[open]'));
+      if (openMenus.length === 0) {
+        return;
+      }
+      const target = event && event.target instanceof Node ? event.target : null;
+      if (!target) {
+        return;
+      }
+      const clickedInsideMenu = openMenus.some((menu) => menu.contains(target));
+      if (clickedInsideMenu) {
+        return;
+      }
+      closeUniversalQuickActionMenus();
+    }, true);
+
+    document.addEventListener('keydown', (event) => {
+      if (!event || event.key !== 'Escape') {
+        return;
+      }
+      const openMenus = Array.from(document.querySelectorAll('.universal-create-menu[open]'));
+      if (openMenus.length === 0) {
+        return;
+      }
+      closeUniversalQuickActionMenus();
+    }, true);
+  }
+
+  function initUniversalLauncherTriggers(api) {
+    const triggers = Array.from(document.querySelectorAll('[data-universal-launcher-open]'));
+    if (triggers.length === 0) {
+      createLauncherDebugLog('initUniversalLauncherTriggers: no triggers found');
+      return;
+    }
+    triggers.forEach((trigger) => {
+      if (trigger.dataset.universalLauncherInit === 'true') {
+        return;
+      }
+      trigger.dataset.universalLauncherInit = 'true';
+      trigger.addEventListener('click', (event) => {
+        if (event) {
+          event.preventDefault();
+        }
+        const details = trigger.closest('details');
+        if (details) {
+          details.removeAttribute('open');
+        }
+        const type = trigger.dataset && typeof trigger.dataset.universalLauncherOpen === 'string'
+          ? trigger.dataset.universalLauncherOpen.trim()
+          : '';
+        createLauncherDebugLog('universal launcher trigger clicked', { type });
+        guardUniversalLauncher(api, {
+          type: type || 'create_app'
+        });
+      });
+    });
+  }
+
+  function openPendingUniversalLauncherModal(api) {
+    if (!api || !universalLauncherState.pendingDefaults) {
+      return;
+    }
+    createLauncherDebugLog('openPendingUniversalLauncherModal: running with defaults');
+    guardUniversalLauncher(api, universalLauncherState.pendingDefaults);
+    universalLauncherState.pendingDefaults = null;
+    if (universalLauncherState.shouldCleanupQuery) {
+      cleanupUniversalLauncherParams();
+      universalLauncherState.shouldCleanupQuery = false;
+    }
+  }
+
+  function guardUniversalLauncher(api, defaults = null) {
+    if (!api || typeof api.showModal !== 'function') {
+      createLauncherDebugLog('guardUniversalLauncher aborted: api unavailable');
+      return;
+    }
+    createLauncherDebugLog('guardUniversalLauncher invoked', { defaults: Boolean(defaults) });
+    if (defaults) {
+      api.showModal(defaults);
+    } else {
+      api.showModal();
+    }
+  }
 
   function initializeCreateLauncherIntegration() {
     const defaults = parseCreateLauncherDefaults();
@@ -3628,6 +3989,34 @@ document.addEventListener("DOMContentLoaded", () => {
     return '';
   }
 
+  function isPluginLauncherPath(pathname) {
+    return typeof pathname === 'string'
+      && (
+        pathname.startsWith('/run/plugin/')
+        || pathname.startsWith('/pinokio/run/plugin/')
+        || (pathname.startsWith('/run/api/') && /\/pinokio\.js$/i.test(pathname))
+      );
+  }
+
+  function getPluginToolCategory(plugin) {
+    const explicitCategory = typeof plugin?.category === 'string' ? plugin.category.trim().toLowerCase() : '';
+    if (explicitCategory === 'ide') {
+      return 'IDE';
+    }
+    if (explicitCategory === 'cli') {
+      return 'CLI';
+    }
+    const launchType = typeof plugin?.launch_type === 'string' ? plugin.launch_type.trim().toLowerCase() : '';
+    if (launchType === 'desktop') {
+      return 'IDE';
+    }
+    if (launchType === 'terminal') {
+      return 'CLI';
+    }
+    const runs = Array.isArray(plugin?.run) ? plugin.run : [];
+    return runs.some((step) => step && step.method === 'exec') ? 'IDE' : 'CLI';
+  }
+
   function mapPluginMenuToAskAiTools(menu) {
     if (!Array.isArray(menu)) {
       return [];
@@ -3637,15 +4026,22 @@ document.addEventListener("DOMContentLoaded", () => {
         return null;
       }
       const href = typeof plugin.href === 'string' ? plugin.href.trim() : '';
-      if (!href || !href.startsWith('/run/plugin/')) {
+      if (!href) {
+        return null;
+      }
+      let parsed;
+      try {
+        parsed = new URL(href, window.location.origin);
+      } catch (_) {
+        return null;
+      }
+      if (parsed.origin !== window.location.origin || !isPluginLauncherPath(parsed.pathname)) {
         return null;
       }
       const label = typeof plugin.title === 'string' && plugin.title.trim()
         ? plugin.title.trim()
         : (typeof plugin.text === 'string' && plugin.text.trim() ? plugin.text.trim() : href);
-      const runs = Array.isArray(plugin.run) ? plugin.run : [];
-      const hasExec = runs.some((step) => step && step.method === 'exec');
-      const normalized = href.replace(/^\/run/, '').replace(/^\/+/, '');
+      const normalized = parsed.pathname.replace(/^\/run/, '').replace(/^\/+/, '');
       const parts = normalized.split('/').filter(Boolean);
       let value = '';
       if (parts[0] === 'plugin' && parts.length >= 3) {
@@ -3667,7 +4063,7 @@ document.addEventListener("DOMContentLoaded", () => {
         label,
         href,
         iconSrc: typeof plugin.image === 'string' ? plugin.image : null,
-        category: hasExec ? 'IDE' : 'CLI',
+        category: getPluginToolCategory(plugin),
         isDefault: plugin.default === true
       };
     }).filter(Boolean);
@@ -3689,11 +4085,11 @@ document.addEventListener("DOMContentLoaded", () => {
       })
       .then((payload) => {
         const mapped = mapPluginMenuToAskAiTools(payload && Array.isArray(payload.menu) ? payload.menu : []);
-        return mapped.length > 0 ? mapped : ASK_AI_FALLBACK_TOOLS.slice();
+        return mapped;
       })
       .catch((error) => {
-        console.warn('Failed to load Ask AI agents, using fallback list', error);
-        return ASK_AI_FALLBACK_TOOLS.slice();
+        console.warn('Failed to load Ask AI plugins', error);
+        return [];
       })
       .finally(() => {
         askAiState.toolsPromise = null;
@@ -3703,57 +4099,141 @@ document.addEventListener("DOMContentLoaded", () => {
     return tools;
   }
 
-  function resolveAskAiCliProvider(agentHref) {
-    if (!agentHref) {
-      return '';
+  const TERMINALS_DISCOVERY_REFRESH_SIGNAL_KEY = 'pinokio.terminals.discovery.refresh';
+  let terminalsDiscoveryBroadcastChannel = null;
+  const terminalsDiscoveryRefreshState = {
+    lastAtByWorkspace: new Map()
+  };
+
+  function normalizeWorkspaceCwdForTerminalsDiscovery(value) {
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  function getTerminalsDiscoveryBroadcastChannel() {
+    if (terminalsDiscoveryBroadcastChannel !== null) {
+      return terminalsDiscoveryBroadcastChannel;
+    }
+    if (typeof window.BroadcastChannel !== 'function') {
+      terminalsDiscoveryBroadcastChannel = false;
+      return null;
     }
     try {
-      const parsed = new URL(agentHref, window.location.origin);
-      const match = /^\/run\/plugin\/code\/(codex|claude|gemini)\/pinokio\.js$/i.exec(parsed.pathname || '');
-      if (!match || !match[1]) {
-        return '';
-      }
-      return String(match[1]).toLowerCase();
+      terminalsDiscoveryBroadcastChannel = new window.BroadcastChannel(TERMINALS_DISCOVERY_REFRESH_SIGNAL_KEY);
+      return terminalsDiscoveryBroadcastChannel;
     } catch (_) {
-      return '';
+      terminalsDiscoveryBroadcastChannel = false;
+      return null;
     }
   }
 
-  async function startAskAiCliSession(provider, workspaceCwd) {
-    const response = await fetch('/terminals/start', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        provider,
-        workspacePath: workspaceCwd || ''
-      })
-    });
-    let payload = null;
-    try {
-      payload = await response.json();
-    } catch (_) {
-      payload = null;
-    }
-    if (!response.ok || !payload || !payload.url) {
-      const message = payload && payload.error ? payload.error : `Failed to start ${provider}`;
-      throw new Error(message);
+  function extractWorkspaceCwdFromPluginLaunchUrl(rawUrl, workspaceCwd = '') {
+    const fallbackCwd = normalizeWorkspaceCwdForTerminalsDiscovery(workspaceCwd);
+    if (!rawUrl) {
+      return fallbackCwd;
     }
     try {
-      const parsed = new URL(payload.url, window.location.origin);
-      parsed.searchParams.set('ask_ai', '1');
-      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+      const parsed = new URL(rawUrl, window.location.origin);
+      if (parsed.origin !== window.location.origin) {
+        return fallbackCwd;
+      }
+      if (!isPluginLauncherPath(parsed.pathname)) {
+        return '';
+      }
+      const launchCwd = normalizeWorkspaceCwdForTerminalsDiscovery(parsed.searchParams.get('cwd') || '');
+      return launchCwd || fallbackCwd;
     } catch (_) {
-      return payload.url;
+      return fallbackCwd;
     }
   }
+
+  function buildTerminalsDiscoveryRefreshUrl(workspaceCwd = '') {
+    const params = new URLSearchParams();
+    params.set('mode', 'terminals');
+    params.set('fetch', '1');
+    params.set('sync', '1');
+    params.set('limit', '1');
+    const normalizedWorkspace = normalizeWorkspaceCwdForTerminalsDiscovery(workspaceCwd);
+    if (normalizedWorkspace) {
+      params.set('workspace', normalizedWorkspace);
+    }
+    return `/home?${params.toString()}`;
+  }
+
+  function dispatchTerminalsDiscoveryRefreshSignal(workspaceCwd = '') {
+    const payload = {
+      workspaceCwd: normalizeWorkspaceCwdForTerminalsDiscovery(workspaceCwd),
+      ts: Date.now()
+    };
+    try {
+      window.localStorage.setItem(TERMINALS_DISCOVERY_REFRESH_SIGNAL_KEY, JSON.stringify(payload));
+    } catch (_) {}
+    const channel = getTerminalsDiscoveryBroadcastChannel();
+    if (channel) {
+      try {
+        channel.postMessage(payload);
+      } catch (_) {}
+    }
+    return payload;
+  }
+
+  function requestTerminalsDiscoveryRefresh(workspaceCwd = '', options = {}) {
+    const normalizedWorkspace = normalizeWorkspaceCwdForTerminalsDiscovery(workspaceCwd);
+    if (!normalizedWorkspace) {
+      return false;
+    }
+    const now = Date.now();
+    const dedupeWindowMs = Number.isFinite(options && options.dedupeWindowMs)
+      ? Math.max(0, Math.floor(options.dedupeWindowMs))
+      : 1200;
+    const lastAt = terminalsDiscoveryRefreshState.lastAtByWorkspace.get(normalizedWorkspace) || 0;
+    if (now - lastAt < dedupeWindowMs) {
+      return false;
+    }
+    terminalsDiscoveryRefreshState.lastAtByWorkspace.set(normalizedWorkspace, now);
+
+    const requestRefresh = () => {
+      dispatchTerminalsDiscoveryRefreshSignal(normalizedWorkspace);
+      const refreshUrl = buildTerminalsDiscoveryRefreshUrl(normalizedWorkspace);
+      fetch(refreshUrl, {
+        method: 'GET',
+        keepalive: true,
+        cache: 'no-store',
+        headers: {
+          Accept: 'application/json'
+        }
+      }).catch(() => {});
+    };
+
+    requestRefresh();
+    const retryDelays = Array.isArray(options && options.retryDelays) && options.retryDelays.length > 0
+      ? options.retryDelays
+      : [2500];
+    retryDelays.forEach((delay) => {
+      const safeDelay = Number.isFinite(delay) ? Math.max(0, Math.floor(delay)) : 0;
+      window.setTimeout(requestRefresh, safeDelay);
+    });
+    return true;
+  }
+
+  function refreshTerminalSessions(rawUrl, workspaceCwd = '', options = {}) {
+    const resolvedWorkspace = extractWorkspaceCwdFromPluginLaunchUrl(rawUrl, workspaceCwd);
+    if (!resolvedWorkspace) {
+      return false;
+    }
+    return requestTerminalsDiscoveryRefresh(resolvedWorkspace, options);
+  }
+
+  window.PinokioTerminalsDiscovery = Object.assign({}, window.PinokioTerminalsDiscovery, {
+    buildRefreshUrl: buildTerminalsDiscoveryRefreshUrl,
+    requestRefresh: requestTerminalsDiscoveryRefresh,
+    refreshTerminalSessions
+  });
 
   function buildAskAiLaunchUrl(agentHref, workspaceCwd) {
     let next = agentHref || '';
     try {
       const parsed = new URL(agentHref, window.location.origin);
-      if (parsed.pathname.startsWith('/run/plugin/')) {
+      if (isPluginLauncherPath(parsed.pathname)) {
         if (workspaceCwd && !parsed.searchParams.has('cwd')) {
           parsed.searchParams.set('cwd', workspaceCwd);
         }
@@ -3842,17 +4322,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (dispatchAskAiLaunch(payload)) {
       return;
     }
-    const cliProvider = resolveAskAiCliProvider(tool.href);
-    if (cliProvider) {
-      startAskAiCliSession(cliProvider, workspaceCwd).then((sessionUrl) => {
-        if (sessionUrl) {
-          window.location.href = sessionUrl;
-        }
-      }).catch((error) => {
-        console.warn('Failed to start Ask AI CLI session', error);
-      });
-      return;
-    }
     const fallbackUrl = buildAskAiLaunchUrl(tool.href, workspaceCwd);
     if (fallbackUrl) {
       window.location.href = fallbackUrl;
@@ -3890,6 +4359,33 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function parseUniversalLauncherDefaults() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (!params.has('universal')) {
+        return null;
+      }
+
+      const defaults = {};
+      const typeParam = params.get('type');
+      if (typeParam) defaults.type = typeParam.trim();
+
+      const promptParam = params.get('prompt');
+      if (promptParam) defaults.prompt = promptParam.trim();
+
+      const nameParam = params.get('name');
+      if (nameParam) defaults.name = nameParam.trim();
+
+      const toolParam = params.get('tool');
+      if (toolParam) defaults.tool = toolParam.trim();
+
+      return defaults;
+    } catch (error) {
+      console.warn('Failed to parse universal launcher params', error);
+      return null;
+    }
+  }
+
   function openPendingCreateLauncherModal(api) {
     if (!api || !createLauncherState.pendingDefaults) {
       return;
@@ -3915,7 +4411,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       api.showModal();
     }
-    wait_ready(null, { showLoader: false }).then(({ ready }) => {
+    wait_ready(null, { showLoader: false, requireStartup: true }).then(({ ready }) => {
       createLauncherDebugLog('guardCreateLauncher wait_ready resolved', { ready });
       if (ready) {
         return;
@@ -3988,5 +4484,128 @@ document.addEventListener("DOMContentLoaded", () => {
       console.warn('Failed to clean up create launcher params', error);
     }
   }
+
+  function cleanupUniversalLauncherParams() {
+    try {
+      const url = new URL(window.location.href);
+      [
+        'universal',
+        'type',
+        'prompt',
+        'name',
+        'tool'
+      ].forEach((key) => {
+        url.searchParams.delete(key);
+      });
+      window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    } catch (error) {
+      console.warn('Failed to clean up universal launcher params', error);
+    }
+  }
+
+  function getTaskPendingCopyByAction(action) {
+    if (action === '/task/install') {
+      return {
+        button: 'Installing...',
+        status: 'Installing the task and reopening this page.'
+      };
+    }
+    if (action === '/task/start') {
+      return {
+        button: 'Launching...',
+        status: 'Preparing the workspace and opening your selected tool.'
+      };
+    }
+    return {
+      button: 'Working...',
+      status: 'Finishing your request.'
+    };
+  }
+
+  function ensureTaskSubmitFeedback(form) {
+    let feedback = form.querySelector('[data-task-submit-feedback]');
+    if (feedback) {
+      return feedback;
+    }
+    feedback = document.createElement('p');
+    feedback.className = 'task-submit-feedback';
+    feedback.setAttribute('data-task-submit-feedback', '');
+    feedback.setAttribute('aria-live', 'polite');
+    feedback.setAttribute('aria-hidden', 'true');
+
+    const feedbackText = document.createElement('span');
+    feedbackText.setAttribute('data-task-submit-feedback-text', '');
+    feedback.appendChild(feedbackText);
+    form.appendChild(feedback);
+    return feedback;
+  }
+
+  function initTaskPendingSubmitFallback() {
+    const forms = Array.from(document.querySelectorAll('form[action="/task/install"], form[action="/task/start"]'));
+    forms.forEach((form) => {
+      if (form.matches('[data-task-pending-form]') || form.dataset.taskPendingBound === 'true') {
+        return;
+      }
+
+      const action = form.getAttribute('action') || '';
+      form.dataset.taskPendingBound = 'true';
+
+      form.addEventListener('submit', (event) => {
+        if (form.dataset.taskSubmitting === 'true') {
+          event.preventDefault();
+          return;
+        }
+
+        const copy = getTaskPendingCopyByAction(action);
+        const submitter = event.submitter && event.submitter.form === form
+          ? event.submitter
+          : form.querySelector('button[type="submit"], input[type="submit"]');
+        const feedback = ensureTaskSubmitFeedback(form);
+        const feedbackText = feedback.querySelector('[data-task-submit-feedback-text]') || feedback;
+
+        event.preventDefault();
+        form.dataset.taskSubmitting = 'true';
+        form.classList.add('is-submitting');
+        form.setAttribute('aria-busy', 'true');
+        document.body.classList.add('task-page-busy');
+
+        if (submitter) {
+          submitter.classList.add('is-busy');
+          submitter.setAttribute('aria-disabled', 'true');
+          if (submitter.tagName === 'BUTTON') {
+            const label = submitter.querySelector('span');
+            if (label) {
+              label.textContent = copy.button;
+            } else {
+              submitter.textContent = copy.button;
+            }
+          } else if (submitter.tagName === 'INPUT') {
+            submitter.value = copy.button;
+          }
+          submitter.disabled = true;
+        }
+
+        Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"]')).forEach((button) => {
+          if (button === submitter) {
+            return;
+          }
+          button.disabled = true;
+          button.setAttribute('aria-disabled', 'true');
+        });
+
+        feedbackText.textContent = copy.status;
+        feedback.classList.add('is-visible');
+        feedback.setAttribute('aria-hidden', 'false');
+
+        window.requestAnimationFrame(() => {
+          window.setTimeout(() => {
+            form.submit();
+          }, 0);
+        });
+      });
+    });
+  }
+
+  initTaskPendingSubmitFallback();
 
 })

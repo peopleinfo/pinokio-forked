@@ -5,6 +5,7 @@ const os = require('os')
 const fs = require('fs')
 const Util = require("../kernel/util")
 const Environment = require("../kernel/environment")
+const getLaunchTarget = require("../kernel/api/launcher_target")
 const NOTIFICATION_CHANNEL = 'kernel.notifications'
 class Socket {
   normalizeLaunchSource(source = "") {
@@ -71,6 +72,46 @@ class Socket {
       return reqId
     }
     return ""
+  }
+  sourceFromBoundUrl(boundUrl = "") {
+    if (typeof boundUrl !== "string") {
+      return null
+    }
+    const trimmed = boundUrl.trim()
+    if (!trimmed) {
+      return null
+    }
+    try {
+      const parsed = new URL(trimmed)
+      return {
+        protocol: parsed.protocol === "https:" || parsed.protocol === "wss:" ? "https" : "http",
+        host: parsed.host
+      }
+    } catch (error) {
+      return null
+    }
+  }
+  projectLaunchTargetUri(uri, ws) {
+    if (typeof uri !== "string" || !/^https?:\/\//i.test(uri)) {
+      return uri
+    }
+    const registry = this.parent && this.parent.appRegistry
+    if (!registry || typeof registry.buildExternalReadyUrl !== "function") {
+      return uri
+    }
+    const source = this.sourceFromBoundUrl(ws && ws._boundUrl ? ws._boundUrl : "")
+    if (!source || typeof registry.normalizeSource !== "function") {
+      return uri
+    }
+    const sourceInfo = registry.normalizeSource(source)
+    if (!sourceInfo || !sourceInfo.hostname || (
+      typeof registry.isLoopbackHostname === "function" &&
+      registry.isLoopbackHostname(sourceInfo.hostname)
+    )) {
+      return uri
+    }
+    const projected = registry.buildExternalReadyUrl(uri, source)
+    return projected || uri
   }
   trackLaunchTelemetry(scriptPath = "", source = "unknown") {
     const appPreferences = this.parent && this.parent.appPreferences
@@ -196,10 +237,14 @@ class Socket {
               // get the default script and respond
               let id = this.parent.kernel.api.filePath(req.uri)
               try {
-                let default_url = await this.parent.kernel.api.get_default(id)
+                let defaultTarget = await getLaunchTarget(this.parent.kernel.api, id, req.default)
+                const launchTargetUri = defaultTarget && defaultTarget.uri
+                  ? this.projectLaunchTargetUri(defaultTarget.uri, ws)
+                  : undefined
                 ws.send(JSON.stringify({
                   data: {
-                    uri: default_url 
+                    uri: launchTargetUri,
+                    input: defaultTarget ? defaultTarget.input : undefined
                   }
                 }))
               } catch (e) {
@@ -239,7 +284,7 @@ class Socket {
                 } else {
                   let buf = this.buffer[id]
                   let sh = this.active_shell[id]
-                  this.subscribe(ws, id, buf, sh)
+                  this.subscribe(ws, id, buf, sh, req)
                   if (req.mode !== "listen") {
                     // Run only if currently not running
                     if (!this.parent.kernel.api.running[id]) {
@@ -263,7 +308,7 @@ class Socket {
             if (req.id) {
               let buf = this.buffer[req.id]
               let sh = this.active_shell[req.id]
-              this.subscribe(ws, req.id, buf, sh)
+              this.subscribe(ws, req.id, buf, sh, req)
               if (req.mode === "listen") {
                 return
               }
@@ -300,13 +345,7 @@ class Socket {
                 // Mark local client sockets by IP matching any local address
                 try {
                   const ip = ws._ip || ''
-                  const isLocal = (addr) => {
-                    if (!addr || typeof addr !== 'string') return false
-                    if (this.localAddresses.has(addr)) return true
-                    const v = addr.trim().toLowerCase()
-                    return v.startsWith('::ffff:127.') || v.startsWith('127.')
-                  }
-                  ws._isLocalClient = isLocal(ip)
+                  ws._isLocalClient = this.isLocalAddress(ip)
                   if (ws._isLocalClient && ws._deviceId) {
                     this.localDeviceIds.add(ws._deviceId)
                   }
@@ -386,18 +425,22 @@ class Socket {
       this.old_buffer = structuredClone(this.buffer)
     }, 5000)
   }
-  subscribe(ws, id, buf, sh) {
+  subscribe(ws, id, buf, sh, req = {}) {
     let resolvedShellId = sh || null
     let resolvedState = buf
     let hasState = typeof resolvedState === "string" ? resolvedState.length > 0 : Boolean(resolvedState)
+    let resolvedShell = null
     if ((!resolvedShellId || !hasState) && this.parent && this.parent.kernel && this.parent.kernel.shell && Array.isArray(this.parent.kernel.shell.shells)) {
-      const groupedShell = this.parent.kernel.shell.shells.find((candidate) => {
+      const directShell = this.parent.kernel.shell.get(id)
+      const liveDirectShell = directShell && directShell.done !== true ? directShell : null
+      const groupedShell = liveDirectShell || this.parent.kernel.shell.shells.find((candidate) => {
         return candidate
           && candidate.done !== true
           && typeof candidate.group === "string"
           && candidate.group === id
       })
       if (groupedShell) {
+        resolvedShell = groupedShell
         if (!resolvedShellId) {
           resolvedShellId = groupedShell.id
         }
@@ -409,6 +452,12 @@ class Socket {
           }
         }
       }
+    }
+    if (!resolvedShell && resolvedShellId && this.parent && this.parent.kernel && this.parent.kernel.shell) {
+      resolvedShell = this.parent.kernel.shell.get(resolvedShellId)
+    }
+    if (resolvedShell && req && req.input) {
+      resolvedShell.input = true
     }
     if (this.parent.kernel.api.running[id] || resolvedShellId || hasState) {
       ws.send(JSON.stringify({
@@ -520,7 +569,11 @@ class Socket {
       if (e.kernel) {
         caller = e.caller
       } else {
-        caller = this.parent.kernel.api.filePath(e.caller)
+        try {
+          caller = this.parent.kernel.api.filePath(e.caller)
+        } catch (error) {
+          caller = e.caller
+        }
       }
 
       const subscribers = this.subscriptions.get(caller) || new Set();
@@ -601,6 +654,13 @@ class Socket {
   isLocalDevice(deviceId) {
     if (!deviceId || typeof deviceId !== 'string') return false
     return this.localDeviceIds.has(deviceId)
+  }
+
+  isLocalAddress(addr) {
+    if (!addr || typeof addr !== 'string') return false
+    if (this.localAddresses.has(addr)) return true
+    const v = addr.trim().toLowerCase()
+    return v === 'localhost' || v === '::1' || v.startsWith('::ffff:127.') || v.startsWith('127.')
   }
 
   ensureNotificationBridge() {

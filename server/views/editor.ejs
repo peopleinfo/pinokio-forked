@@ -143,6 +143,7 @@ body.frozen {
 <script>
 let shell_id
 document.addEventListener("DOMContentLoaded", async () => {
+  const readOnly = <%= readonly ? "true" : "false" %>;
   <% if (error) { %>
     document.querySelector(".requirements .content").innerHTML = '<div class="loading"><i class="fa-solid fa-circle-exclamation"></i> <%=error%></div>'
   <% } %>
@@ -195,6 +196,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 //      maxLines: Infinity, // set to a large number
       minLines: 1 // set to a small number
     });
+    editor.setReadOnly(readOnly);
     console.log("location.pathname", location.pathname)
     <% if (mod) { %>
       <% if (js) { %>
@@ -231,6 +233,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     let str;
     let original = editor.getValue()
     editor.getSession().on("change", () => {
+      if (readOnly) {
+        return
+      }
       let v = editor.getValue()
       if (original === v) {
         dirty = false
@@ -243,6 +248,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   <% } %>
   const n = new N()
+  const activeProcessWait = <% if (typeof active_process_wait !== 'undefined' && active_process_wait) { %><%- JSON.stringify(active_process_wait) %><% } else { %>null<% } %>
+  if (activeProcessWait && (activeProcessWait.title || activeProcessWait.description) && window.PinokioWaitFooterStatus) {
+    window.PinokioWaitFooterStatus.show(activeProcessWait)
+  }
   class RPC {
     constructor() {
       this.socket = new Socket()
@@ -275,6 +284,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     save() {
       return new Promise((resolve, reject) => {
+        if (readOnly) {
+          resolve()
+          return
+        }
         let cwd = "<%-JSON.stringify(execUrl).slice(1, -1)%>"
         //let cwd = "<%=execUrl%>"
         //let cwd = "~" + location.pathname
@@ -320,12 +333,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (packet.type === 'start') {
 //            refreshParent(packet)
             reloadMemory()
-            if (packet.data && packet.data.description) {
+            if (packet.data && (packet.data.title || packet.data.description)) {
               if ('current' in packet.data) {
                 document.querySelector("footer").innerHTML = `<b>
                   <i class="fa-solid fa-circle-notch fa-spin"></i>(${packet.data.current+1}/${packet.data.total}) ${packet.data.title ? packet.data.title : ''}
                 </b>
-                <div class='flexible content'>${packet.data.description}</div>`
+                <div class='flexible content'>${packet.data.description ? packet.data.description : ''}</div>`
 //                <div class='toggle-expand'>
 //                  <i class="fa-solid fa-circle-chevron-up"></i>
 //                </div>`
@@ -333,7 +346,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 document.querySelector("footer").innerHTML = `<b>
                   <i class="fa-solid fa-circle-notch fa-spin"></i> ${packet.data.title ? packet.data.title : ''}
                 </b>
-                <div class='flexible content'></div>`
+                <div class='flexible content'>${packet.data.description ? packet.data.description : ''}</div>`
 //                <div class='toggle-expand'>
 //                  <i class="fa-solid fa-circle-chevron-up"></i>
 //                </div>`
@@ -432,6 +445,14 @@ document.addEventListener("DOMContentLoaded", async () => {
               response: {},
               uri: packet.id
             })
+          } else if (packet.type === "process.wait.start") {
+            if (window.PinokioWaitFooterStatus) {
+              window.PinokioWaitFooterStatus.show(packet.data)
+            }
+          } else if (packet.type === "process.wait.end") {
+            if (window.PinokioWaitFooterStatus) {
+              window.PinokioWaitFooterStatus.hide()
+            }
           } else if (packet.type === 'wait') {
             await WaitModal(packet.data)
           } else if (packet.type === "htmlmodal") {
@@ -959,7 +980,7 @@ const reloadMemory = async () => {
       <!--
       <button class='btn' id='source' data-editor-url="<%=editorUrl%>">Navigate</button>
       -->
-      <div id='save' class='btn disabled'>
+      <div id='save' class='btn disabled <%= readonly ? "hidden" : "" %>'>
         <span class='save'><i class="fa-solid fa-check"></i> Save</span>
       </div>
     </div>

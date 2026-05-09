@@ -14,9 +14,11 @@ module.exports = {
       "node",
       "huggingface",
       "git",
-      "ffmpeg",
 //      "caddy"
     ]
+    if (platform !== "win32") {
+      conda_requirements.push("tmux")
+    }
     let requirements = [
       { name: "conda", },
       { name: "zip", },
@@ -27,6 +29,7 @@ module.exports = {
     requirements = requirements.concat([
       { name: "git", },
       { name: "node", },
+      { name: "bun", },
       { name: "cli", },
       { name: "ffmpeg", },
 //      { name: "caddy", }
@@ -49,8 +52,12 @@ module.exports = {
       { name: "huggingface" },
       { name: "uv" },
       { name: "py" },
+      { name: "bluefairy" },
       // browserless disabled for now (keep module for later re-enable)
     ])
+    if (platform !== "win32") {
+      requirements.push({ name: "tmux" })
+    }
     return {
       icon: "fa-solid fa-brain",
       title: "AI",
@@ -72,6 +79,7 @@ module.exports = {
       { name: "node", },
       { name: "cli", },
       { name: "py" },
+      { name: "bluefairy" },
       // browserless disabled for now (keep module for later re-enable)
     ])
     return {
@@ -97,7 +105,9 @@ module.exports = {
     requirements = requirements.concat([
       { name: "git", },
       { name: "uv", },
+      { name: "node", },
       { name: "py" },
+      { name: "bluefairy" },
     ])
     return {
       icon: "fa-brands fa-python",
@@ -126,6 +136,7 @@ module.exports = {
       { name: "uv", },
       { name: "caddy", },
       { name: "py", },
+      { name: "bluefairy" },
       // browserless disabled for now (keep module for later re-enable)
     ])
     let conda_requirements = [
@@ -154,21 +165,28 @@ module.exports = {
     requirements = requirements.concat([
       { name: "git", },
       { name: "node", },
+      { name: "bun", },
       { name: "cli", },
       { name: "uv", },
       { name: "py", },
       { name: "huggingface" },
       { name: "ffmpeg", },
+      { name: "bluefairy" },
       // browserless disabled for now (keep module for later re-enable)
     ])
+    if (platform !== "win32") {
+      requirements.push({ name: "tmux" })
+    }
     let conda_requirements = [
       zip_cmd,
       "uv",
       "node",
       "huggingface",
       "git",
-      "ffmpeg",
     ]
+    if (platform !== "win32") {
+      conda_requirements.push("tmux")
+    }
     return {
       icon: "fa-solid fa-laptop-code",
       title: "Coding (Essential)",
@@ -194,6 +212,7 @@ module.exports = {
       { name: "huggingface" },
       { name: "ffmpeg", },
       { name: "py", },
+      { name: "bluefairy" },
       // browserless disabled for now (keep module for later re-enable)
     ])
     let conda_requirements = [
@@ -202,7 +221,6 @@ module.exports = {
       "node",
       "huggingface",
       "git",
-      "ffmpeg",
       "caddy",
     ]
     if (platform === "win32") {
@@ -232,8 +250,10 @@ module.exports = {
     requirements = requirements.concat([
       { name: "git", },
       { name: "uv", },
+      { name: "node", },
       { name: "caddy", },
       { name: "py", },
+      { name: "bluefairy" },
     ])
     return {
       icon: "fa-solid fa-wifi",
@@ -259,8 +279,10 @@ module.exports = {
     requirements = requirements.concat([
       { name: "git", },
       { name: "uv", },
+      { name: "node", },
       { name: "caddy", },
       { name: "py", },
+      { name: "bluefairy" },
     ])
     return {
       icon: "fa-solid fa-wifi",
@@ -280,6 +302,8 @@ module.exports = {
     let requirements = [
       { name: "conda", },
       { name: "git", },
+      { name: "node", },
+      { name: "bluefairy" },
     ]
     return {
       icon: "fa-solid fa-wifi",

@@ -1,16 +1,12 @@
 {
   "name": "pinokiod",
-  "version": "6.0.72",
+  "version": "7.2.17",
   "description": "",
   "main": "index.js",
   "scripts": {
     "download_readme": "wget -O kernel/proto/PINOKIO.md https://raw.githubusercontent.com/pinokiocomputer/home/refs/heads/main/docs/README.md",
     "start": "node script/index",
-    "dev": "node script/index",
-    "postinstall": "node scripts/postinstall.js",
-    "check-update": "node scripts/check-update.js",
-    "sync": "node scripts/sync.js",
-    "security-scan": "node scripts/security-scan.js"
+    "verify:ffmpeg": "node script/verify-ffmpeg.js"
   },
   "author": "",
   "license": "MIT",
